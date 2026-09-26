@@ -20,34 +20,42 @@ import {
   type ColonyDefinition,
 } from "../planner/colonies";
 import type { ColonyBuildings, ColonyEntry, ColonyStore } from "../store/colonyStore";
+import {
+  PLANNER_SETTINGS_KEY,
+  type PlannerSettings,
+  type SettingsStore,
+} from "../store/settingsStore";
 
 const DEFAULT_STAR_BASE_LEVEL = 1;
 const NO_BUILDINGS: ColonyBuildings = {};
-const ONLY_TO_UPGRADE_KEY = "gl-planner-only-to-upgrade";
 
-function useOnlyToUpgrade(): [boolean, (value: boolean) => void] {
-  const [value, setValue] = useState(() => {
-    try {
-      return localStorage.getItem(ONLY_TO_UPGRADE_KEY) === "true";
-    } catch {
-      return false;
-    }
-  });
+type PlannerOptions = Omit<PlannerSettings, "updatedAt">;
 
-  function update(next: boolean) {
-    setValue(next);
-    try {
-      localStorage.setItem(ONLY_TO_UPGRADE_KEY, String(next));
-    } catch {
-      return;
-    }
+const DEFAULT_OPTIONS: PlannerOptions = { onlyToUpgrade: false, hideWallUpgrades: false };
+
+function usePlannerOptions(
+  store: SettingsStore,
+  now: () => number,
+): [PlannerOptions, (changes: Partial<PlannerOptions>) => void] {
+  const subscribe = useCallback(
+    (onChange: () => void) => store.subscribe(PLANNER_SETTINGS_KEY, onChange),
+    [store],
+  );
+  const stored = useSyncExternalStore(subscribe, () => store.get(PLANNER_SETTINGS_KEY));
+  const options: PlannerOptions = stored
+    ? { onlyToUpgrade: stored.onlyToUpgrade, hideWallUpgrades: stored.hideWallUpgrades }
+    : DEFAULT_OPTIONS;
+
+  function update(changes: Partial<PlannerOptions>) {
+    store.set(PLANNER_SETTINGS_KEY, { ...options, ...changes, updatedAt: now() });
   }
 
-  return [value, update];
+  return [options, update];
 }
 
 type PlannerProps = {
   store: ColonyStore;
+  settingsStore: SettingsStore;
   catalog: Catalog;
   now: () => number;
 };
@@ -60,11 +68,20 @@ function useColonyEntry(store: ColonyStore, colonyId: string): ColonyEntry | nul
   return useSyncExternalStore(subscribe, () => store.get(colonyId));
 }
 
-function ColonyPanel({ colony, store, catalog, now }: PlannerProps & { colony: ColonyDefinition }) {
+function ColonyPanel({
+  colony,
+  store,
+  settingsStore,
+  catalog,
+  now,
+}: PlannerProps & { colony: ColonyDefinition }) {
   const entry = useColonyEntry(store, colony.id);
   const starBaseLevel = entry?.starBaseLevel ?? DEFAULT_STAR_BASE_LEVEL;
   const buildings = entry?.buildings ?? NO_BUILDINGS;
-  const [onlyToUpgrade, setOnlyToUpgrade] = useOnlyToUpgrade();
+  const [{ onlyToUpgrade, hideWallUpgrades }, updateOptions] = usePlannerOptions(
+    settingsStore,
+    now,
+  );
   const allGroups = groupedBuildingsForColony(catalog, colony.id);
   const groups = onlyToUpgrade ? filterToUpgrade(allGroups, starBaseLevel, buildings) : allGroups;
   const selectId = `star-base-level-${colony.id}`;
@@ -118,7 +135,7 @@ function ColonyPanel({ colony, store, catalog, now }: PlannerProps & { colony: C
           <input
             type="checkbox"
             checked={onlyToUpgrade}
-            onChange={(event) => setOnlyToUpgrade(event.target.checked)}
+            onChange={(event) => updateOptions({ onlyToUpgrade: event.target.checked })}
           />
           Only what to upgrade
         </label>
@@ -129,6 +146,8 @@ function ColonyPanel({ colony, store, catalog, now }: PlannerProps & { colony: C
         colonyId={colony.id}
         starBaseLevel={starBaseLevel}
         buildings={buildings}
+        hideWallUpgrades={hideWallUpgrades}
+        onHideWallUpgradesChange={(value) => updateOptions({ hideWallUpgrades: value })}
         onDone={applyStep}
       />
 
@@ -207,7 +226,7 @@ function ColonyTab({ colony, store, catalog, unlocked, selected, onSelect }: Col
   );
 }
 
-export function Planner({ store, catalog, now }: PlannerProps) {
+export function Planner({ store, settingsStore, catalog, now }: PlannerProps) {
   const [activeId, setActiveId] = useState(MAIN_COLONY_ID);
   const observatory = observatoryLevel(
     useColonyEntry(store, MAIN_COLONY_ID)?.buildings ?? NO_BUILDINGS,
@@ -242,6 +261,7 @@ export function Planner({ store, catalog, now }: PlannerProps) {
         key={activeColony.id}
         colony={activeColony}
         store={store}
+        settingsStore={settingsStore}
         catalog={catalog}
         now={now}
       />

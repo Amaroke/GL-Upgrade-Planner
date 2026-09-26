@@ -5,8 +5,10 @@ import type { DropStore } from "./dropStore";
 import { COLONY_CODEC, createFirestoreColonyStore } from "./firestoreColonyStore";
 import { mergeLocalIntoCollection } from "./firestoreDocumentStore";
 import { createFirestoreDropStore, DROP_CODEC } from "./firestoreDropStore";
+import { createFirestoreSettingsStore, SETTINGS_CODEC } from "./firestoreSettingsStore";
 import { createNotifier } from "./pubSub";
 import { createSendScheduler, type SyncStatus, type SyncStatusStore } from "./sendScheduler";
+import type { SettingsStore } from "./settingsStore";
 
 type KeyedStore = {
   get(key: string): unknown;
@@ -22,6 +24,7 @@ type KeySubscription = {
 export type AccountSession = {
   drops: DropStore;
   colonies: ColonyStore;
+  settings: SettingsStore;
   syncStatus: SyncStatusStore;
   dispose(): void;
 };
@@ -36,6 +39,7 @@ export type SyncedDropStore = DropStore & {
 export type AccountSync = {
   drops: SyncedDropStore;
   colonies: ColonyStore;
+  settings: SettingsStore;
 };
 
 function createSwitchingStore<S extends KeyedStore>(local: S, onWrite: () => void) {
@@ -81,6 +85,7 @@ export function createAccountSync(deps: {
   auth: AuthService;
   localDrops: DropStore;
   localColonies: ColonyStore;
+  localSettings: SettingsStore;
   createSession: (uid: string) => AccountSession;
   mergeLocalIntoAccount: (uid: string) => Promise<void>;
 }): AccountSync {
@@ -97,6 +102,7 @@ export function createAccountSync(deps: {
   };
   const drops = createSwitchingStore(deps.localDrops, noteWrite);
   const colonies = createSwitchingStore(deps.localColonies, noteWrite);
+  const settings = createSwitchingStore(deps.localSettings, noteWrite);
 
   function sessionFor(uid: string): AccountSession {
     let existing = sessions.get(uid);
@@ -114,6 +120,7 @@ export function createAccountSync(deps: {
     unwatchSyncStatus = next ? next.syncStatus.subscribe(syncStatusNotifier.notify) : null;
     drops.switchTo(next?.drops ?? deps.localDrops);
     colonies.switchTo(next?.colonies ?? deps.localColonies);
+    settings.switchTo(next?.settings ?? deps.localSettings);
     syncStatusNotifier.notify();
   }
 
@@ -159,6 +166,7 @@ export function createAccountSync(deps: {
       saveNow: () => session?.syncStatus.saveNow(),
     },
     colonies: colonies.store,
+    settings: settings.store,
   };
 }
 
@@ -168,8 +176,10 @@ export async function mergeLocalIntoAccount(
   local: {
     drops: DropStore;
     colonies: ColonyStore;
+    settings: SettingsStore;
     dropKeys: readonly string[];
     colonyIds: readonly string[];
+    settingsKeys: readonly string[];
   },
 ): Promise<void> {
   await Promise.all([
@@ -189,6 +199,14 @@ export async function mergeLocalIntoAccount(
       (key) => local.colonies.get(key),
       local.colonyIds,
     ),
+    mergeLocalIntoCollection(
+      db,
+      uid,
+      "settings",
+      SETTINGS_CODEC,
+      (key) => local.settings.get(key),
+      local.settingsKeys,
+    ),
   ]);
 }
 
@@ -196,13 +214,16 @@ function createFirestoreSession(db: Firestore, uid: string): AccountSession {
   const scheduler = createSendScheduler();
   const drops = createFirestoreDropStore(db, uid, scheduler);
   const colonies = createFirestoreColonyStore(db, uid, scheduler);
+  const settings = createFirestoreSettingsStore(db, uid, scheduler);
   return {
     drops,
     colonies,
+    settings,
     syncStatus: scheduler.syncStatus,
     dispose() {
       drops.dispose();
       colonies.dispose();
+      settings.dispose();
     },
   };
 }
@@ -211,22 +232,27 @@ export function createFirestoreAccountSync(options: {
   auth: AuthService;
   localDrops: DropStore;
   localColonies: ColonyStore;
+  localSettings: SettingsStore;
   db: Firestore;
   dropKeys: readonly string[];
   colonyIds: readonly string[];
+  settingsKeys: readonly string[];
 }): AccountSync {
-  const { auth, localDrops, localColonies, db } = options;
+  const { auth, localDrops, localColonies, localSettings, db } = options;
   return createAccountSync({
     auth,
     localDrops,
     localColonies,
+    localSettings,
     createSession: (uid) => createFirestoreSession(db, uid),
     mergeLocalIntoAccount: (uid) =>
       mergeLocalIntoAccount(db, uid, {
         drops: localDrops,
         colonies: localColonies,
+        settings: localSettings,
         dropKeys: options.dropKeys,
         colonyIds: options.colonyIds,
+        settingsKeys: options.settingsKeys,
       }),
   });
 }

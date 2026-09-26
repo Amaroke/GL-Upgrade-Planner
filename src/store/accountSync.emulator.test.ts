@@ -9,6 +9,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { mergeLocalIntoAccount } from "./accountSync";
 import { createMemoryColonyStore, type ColonyStore } from "./colonyStore";
 import { createMemoryDropStore, type DropStore } from "./dropStore";
+import { createMemorySettingsStore, type SettingsStore } from "./settingsStore";
 
 function firestoreOf(context: RulesTestContext): Firestore {
   return context.firestore() as unknown as Firestore;
@@ -17,12 +18,17 @@ function firestoreOf(context: RulesTestContext): Firestore {
 const KEYS = ["gl-timer-star-battery", "gl-timer-tool-case"];
 const COLONY_IDS = ["main", "colony-1"];
 
-function merge(db: Firestore, local: { drops?: DropStore; colonies?: ColonyStore }): Promise<void> {
+function merge(
+  db: Firestore,
+  local: { drops?: DropStore; colonies?: ColonyStore; settings?: SettingsStore },
+): Promise<void> {
   return mergeLocalIntoAccount(db, "player-1", {
     drops: local.drops ?? createMemoryDropStore(),
     colonies: local.colonies ?? createMemoryColonyStore(),
+    settings: local.settings ?? createMemorySettingsStore(),
     dropKeys: KEYS,
     colonyIds: COLONY_IDS,
+    settingsKeys: ["planner"],
   });
 }
 
@@ -188,5 +194,39 @@ describe("mergeLocalIntoAccount colonies", () => {
 
     const snapshot = await getDoc(doc(db, "users/player-1/colonies/colony-1"));
     expect(snapshot.exists()).toBe(false);
+  });
+});
+
+describe("mergeLocalIntoAccount settings", () => {
+  const PLANNER = "users/player-1/settings/planner";
+
+  function localSettings(updatedAt: number) {
+    const settings = createMemorySettingsStore();
+    settings.set("planner", { onlyToUpgrade: true, hideWallUpgrades: true, updatedAt });
+    return settings;
+  }
+
+  it("imports local settings the account does not have yet", async () => {
+    const db = firestoreOf(testEnv.authenticatedContext("player-1"));
+
+    await merge(db, { settings: localSettings(500) });
+
+    const snapshot = await getDoc(doc(db, PLANNER));
+    expect(snapshot.data()).toEqual({
+      onlyToUpgrade: true,
+      hideWallUpgrades: true,
+      updatedAt: 500,
+    });
+  });
+
+  it("keeps the account settings when they are more recent than the local ones", async () => {
+    const db = firestoreOf(testEnv.authenticatedContext("player-1"));
+    const account = { onlyToUpgrade: false, hideWallUpgrades: false, updatedAt: 900 };
+    await setDoc(doc(db, PLANNER), account);
+
+    await merge(db, { settings: localSettings(500) });
+
+    const snapshot = await getDoc(doc(db, PLANNER));
+    expect(snapshot.data()).toEqual(account);
   });
 });

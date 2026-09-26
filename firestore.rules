@@ -67,6 +67,15 @@ service cloud.firestore {
         && isValidBuildings(request.resource.data.buildings.values());
     }
 
+    function isValidSettings() {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['onlyToUpgrade', 'hideWallUpgrades', 'updatedAt'])
+        && data.keys().hasAll(['onlyToUpgrade', 'hideWallUpgrades', 'updatedAt'])
+        && data.onlyToUpgrade is bool
+        && data.hideWallUpgrades is bool
+        && isValidTimestamp(data.updatedAt);
+    }
+
     match /users/{userId}/drops/{dropId} {
       allow read: if isOwner(userId);
       allow create, update: if isOwner(userId) && isValidDrop();
@@ -76,6 +85,12 @@ service cloud.firestore {
     match /users/{userId}/colonies/{colonyId} {
       allow read: if isOwner(userId);
       allow create, update: if isOwner(userId) && isValidColony();
+      allow delete: if isOwner(userId);
+    }
+
+    match /users/{userId}/settings/{settingsId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidSettings();
       allow delete: if isOwner(userId);
     }
   }

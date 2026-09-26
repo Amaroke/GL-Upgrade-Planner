@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,6 +19,7 @@ import {
   createMemoryColonyStore,
   type ColonyStore,
 } from "../store/colonyStore";
+import { createMemorySettingsStore, type SettingsStore } from "../store/settingsStore";
 import type { BuildingType, Catalog, Category } from "../planner/catalog";
 import type { SyncStatus } from "../store/sendScheduler";
 
@@ -158,13 +159,17 @@ describe("App", () => {
   });
 
   describe("Planner", () => {
-    function renderPlanner(colonyStore: ColonyStore = createMemoryColonyStore()) {
+    function renderPlanner(
+      colonyStore: ColonyStore = createMemoryColonyStore(),
+      settingsStore: SettingsStore = createMemorySettingsStore(),
+    ) {
       return render(
         <App
           store={createMemoryDropStore()}
           auth={SIGNED_OUT_AUTH}
           now={() => NOW}
           colonyStore={colonyStore}
+          settingsStore={settingsStore}
           catalog={FIXTURE_CATALOG}
         />,
       );
@@ -724,24 +729,27 @@ describe("App", () => {
       describe("upgrade filter", () => {
         const filter = () => screen.getByRole("checkbox", { name: "Only what to upgrade" });
 
-        beforeEach(() => localStorage.clear());
-        afterEach(() => localStorage.clear());
-
-        it("remembers the filter after a reload", async () => {
+        it("remembers the filter in the settings after a reload", async () => {
           const colonyStore = createMemoryColonyStore();
+          const settingsStore = createMemorySettingsStore();
           seed(colonyStore, 1, { observatory: [2], mine: [3, 3] });
-          const first = renderPlanner(colonyStore);
+          const first = renderPlanner(colonyStore, settingsStore);
           await userEvent.click(filter());
           first.unmount();
 
-          const second = renderPlanner(colonyStore);
+          expect(settingsStore.get("planner")).toEqual({
+            onlyToUpgrade: true,
+            hideWallUpgrades: false,
+            updatedAt: NOW,
+          });
+          const second = renderPlanner(colonyStore, settingsStore);
 
           expect(filter()).toBeChecked();
           expect(typeNames()).toEqual(["Cannon"]);
 
           await userEvent.click(filter());
           second.unmount();
-          renderPlanner(colonyStore);
+          renderPlanner(colonyStore, settingsStore);
 
           expect(filter()).not.toBeChecked();
         });
@@ -1108,7 +1116,11 @@ describe("App", () => {
         };
       }
 
-      function renderWalls(walls: number[], starBase = 3) {
+      function renderWalls(
+        walls: number[],
+        starBase = 3,
+        settingsStore: SettingsStore = createMemorySettingsStore(),
+      ) {
         const colonyStore = createMemoryColonyStore();
         seed(colonyStore, starBase, { observatory: [6], walls });
         render(
@@ -1117,6 +1129,7 @@ describe("App", () => {
             auth={SIGNED_OUT_AUTH}
             now={() => NOW}
             colonyStore={colonyStore}
+            settingsStore={settingsStore}
             catalog={wallsCatalog()}
           />,
         );
@@ -1195,6 +1208,44 @@ describe("App", () => {
         renderWalls([], 1);
 
         expect(stepList().getByText("Build 3 Walls")).toBeInTheDocument();
+      });
+
+      describe("hide wall upgrades", () => {
+        const hideWallUpgrades = () => screen.getByRole("checkbox", { name: "Hide wall upgrades" });
+
+        it("shows wall upgrades until the option is switched on", () => {
+          renderWalls([2, 2, 2]);
+
+          expect(hideWallUpgrades()).not.toBeChecked();
+          expect(stepList().getByText("Upgrade 3 Walls to level 3")).toBeInTheDocument();
+        });
+
+        it("hides the wall upgrade step but keeps the wall build step", async () => {
+          renderWalls([2, 2, 2]);
+
+          await userEvent.click(hideWallUpgrades());
+
+          expect(stepList().queryByText("Upgrade 3 Walls to level 3")).not.toBeInTheDocument();
+          expect(stepList().getByText("Build 2 Walls")).toBeInTheDocument();
+          expect(stepList().getAllByRole("listitem")).toHaveLength(1);
+        });
+
+        it("remembers the option in the settings after a reload", async () => {
+          const settingsStore = createMemorySettingsStore();
+          renderWalls([2, 2, 2], 3, settingsStore);
+          await userEvent.click(hideWallUpgrades());
+          cleanup();
+
+          expect(settingsStore.get("planner")).toEqual({
+            onlyToUpgrade: false,
+            hideWallUpgrades: true,
+            updatedAt: NOW,
+          });
+          renderWalls([2, 2, 2], 3, settingsStore);
+
+          expect(hideWallUpgrades()).toBeChecked();
+          expect(stepList().queryByText("Upgrade 3 Walls to level 3")).not.toBeInTheDocument();
+        });
       });
     });
   });

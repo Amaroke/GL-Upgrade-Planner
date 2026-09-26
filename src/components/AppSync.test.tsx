@@ -7,6 +7,7 @@ import { createAuthStore, type AuthService, type AuthState } from "../auth/auth"
 import { createFirestoreAccountSync } from "../store/accountSync";
 import { createMemoryColonyStore, type ColonyStore } from "../store/colonyStore";
 import { createMemoryDropStore, type DropStore } from "../store/dropStore";
+import { createMemorySettingsStore } from "../store/settingsStore";
 
 vi.mock("firebase/firestore", () => ({
   doc: vi.fn((_db: unknown, ...segments: string[]) => ({ path: segments.join("/") })),
@@ -111,12 +112,22 @@ async function renderSignedIn() {
     auth,
     localDrops: localStore,
     localColonies,
+    localSettings: createMemorySettingsStore(),
     db: FAKE_DB,
     dropKeys: [STAR_BATTERY, TOOL_CASE],
     colonyIds: ["main"],
+    settingsKeys: ["planner"],
   });
   await tick(0);
-  render(<App store={sync.drops} auth={auth} now={() => NOW} colonyStore={sync.colonies} />);
+  render(
+    <App
+      store={sync.drops}
+      auth={auth}
+      now={() => NOW}
+      colonyStore={sync.colonies}
+      settingsStore={sync.settings}
+    />,
+  );
   return sync;
 }
 
@@ -411,6 +422,32 @@ describe("deferred sync", () => {
         "users/player-1/colonies/main",
       ]),
     );
+  });
+
+  it("sends the Planner options to the account with the deferred send", async () => {
+    await renderSignedIn();
+    act(() => screen.getByRole("checkbox", { name: "Only what to upgrade" }).click());
+    act(() => screen.getByRole("checkbox", { name: "Hide wall upgrades" }).click());
+
+    await tick(FIVE_MINUTES);
+
+    expect(setDoc).toHaveBeenCalledWith(
+      { path: "users/player-1/settings/planner" },
+      { onlyToUpgrade: true, hideWallUpgrades: true, updatedAt: NOW },
+    );
+  });
+
+  it("shows Planner options changed on another device", async () => {
+    await renderSignedIn();
+
+    act(() =>
+      snapshotHandlers.get("users/player-1/settings/planner")?.({
+        data: () => ({ onlyToUpgrade: true, hideWallUpgrades: true, updatedAt: NOW + 5000 }),
+      }),
+    );
+
+    expect(screen.getByRole("checkbox", { name: "Only what to upgrade" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Hide wall upgrades" })).toBeChecked();
   });
 
   it("shows a Colony edited on another device through the real-time listener", async () => {

@@ -1,4 +1,8 @@
-import { createNotifier } from "./pubSub";
+import {
+  createLocalStorageEntryStore,
+  createMemoryEntryStore,
+  type EntryStore,
+} from "./entryStore";
 
 export type ColonyBuildings = Record<string, number[]>;
 
@@ -8,11 +12,7 @@ export type ColonyEntry = {
   updatedAt: number;
 };
 
-export type ColonyStore = {
-  get(colonyId: string): ColonyEntry | null;
-  set(colonyId: string, entry: ColonyEntry): void;
-  subscribe(colonyId: string, onChange: () => void): () => void;
-};
+export type ColonyStore = EntryStore<ColonyEntry>;
 
 const STORAGE_PREFIX = "gl-colony-";
 
@@ -41,63 +41,10 @@ export function toColonyEntry(value: unknown): ColonyEntry | null {
   return { starBaseLevel, buildings: sortedDescending(buildings), updatedAt };
 }
 
-function parseEntry(stored: string): ColonyEntry | null {
-  try {
-    return toColonyEntry(JSON.parse(stored));
-  } catch {
-    return null;
-  }
-}
-
 export function createLocalStorageColonyStore(): ColonyStore {
-  const sameTab = createNotifier<string>();
-  const parsed = new Map<string, { stored: string; entry: ColonyEntry | null }>();
-  return {
-    get(colonyId) {
-      const key = STORAGE_PREFIX + colonyId;
-      const stored = localStorage.getItem(key);
-      if (!stored) return null;
-      const cached = parsed.get(key);
-      if (cached?.stored === stored) return cached.entry;
-      const entry = parseEntry(stored);
-      parsed.set(key, { stored, entry });
-      return entry;
-    },
-    set(colonyId, entry) {
-      localStorage.setItem(STORAGE_PREFIX + colonyId, JSON.stringify(entry));
-      sameTab.notify(colonyId);
-    },
-    subscribe(colonyId, onChange) {
-      const key = STORAGE_PREFIX + colonyId;
-      const handleStorage = (event: StorageEvent) => {
-        if (event.storageArea !== localStorage) return;
-        if (event.key === null || event.key === key) onChange();
-      };
-      window.addEventListener("storage", handleStorage);
-      const unsubscribeSameTab = sameTab.subscribe((changedId) => {
-        if (changedId === colonyId) onChange();
-      });
-      return () => {
-        window.removeEventListener("storage", handleStorage);
-        unsubscribeSameTab();
-      };
-    },
-  };
+  return createLocalStorageEntryStore(STORAGE_PREFIX, toColonyEntry);
 }
 
 export function createMemoryColonyStore(): ColonyStore {
-  const values = new Map<string, ColonyEntry>();
-  const notifier = createNotifier<string>();
-  return {
-    get: (colonyId) => values.get(colonyId) ?? null,
-    set(colonyId, entry) {
-      values.set(colonyId, entry);
-      notifier.notify(colonyId);
-    },
-    subscribe(colonyId, onChange) {
-      return notifier.subscribe((changedId) => {
-        if (changedId === colonyId) onChange();
-      });
-    },
-  };
+  return createMemoryEntryStore<ColonyEntry>();
 }

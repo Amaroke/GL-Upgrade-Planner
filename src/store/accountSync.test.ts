@@ -4,6 +4,7 @@ import { createAccountSync, type AccountSession } from "./accountSync";
 import { createMemoryColonyStore, type ColonyEntry, type ColonyStore } from "./colonyStore";
 import { createMemoryDropStore, type DropStore } from "./dropStore";
 import type { SyncStatus, SyncStatusStore } from "./sendScheduler";
+import { createMemorySettingsStore, type SettingsStore } from "./settingsStore";
 
 function fakeRemoteStore(initial: Record<string, number> = {}) {
   const store = createMemoryDropStore(initial);
@@ -55,10 +56,12 @@ type RemoteDropStore = DropStore & { syncStatus?: SyncStatusStore; dispose?: () 
 function sessionOf(
   drops: RemoteDropStore,
   colonies: ColonyStore = createMemoryColonyStore(),
+  settings: SettingsStore = createMemorySettingsStore(),
 ): AccountSession {
   return {
     drops,
     colonies,
+    settings,
     syncStatus: drops.syncStatus ?? IDLE_STATUS,
     dispose: () => drops.dispose?.(),
   };
@@ -74,6 +77,7 @@ function syncedDrops(deps: {
     auth: deps.auth,
     localDrops: deps.localStore,
     localColonies: createMemoryColonyStore(),
+    localSettings: createMemorySettingsStore(),
     createSession: (uid) => sessionOf(deps.createRemoteStore(uid)),
     mergeLocalIntoAccount: deps.mergeLocalIntoRemote,
   }).drops;
@@ -547,6 +551,7 @@ describe("createAccountSync colonies", () => {
       auth: authServiceFrom(authStore),
       localDrops: createMemoryDropStore(),
       localColonies,
+      localSettings: createMemorySettingsStore(),
       createSession: () => sessionOf(createMemoryDropStore(), remoteColonies),
       mergeLocalIntoAccount,
     });
@@ -622,5 +627,48 @@ describe("createAccountSync colonies", () => {
     authStore.setState({ status: "signed-out" });
 
     expect(colonies.get("main")).toEqual(colony(2, 10));
+  });
+});
+
+describe("createAccountSync settings", () => {
+  const SETTINGS = { onlyToUpgrade: true, hideWallUpgrades: false, updatedAt: 10 };
+  const ACCOUNT_SETTINGS = { onlyToUpgrade: false, hideWallUpgrades: true, updatedAt: 20 };
+
+  function setup() {
+    const authStore = createAuthStore({ status: "signed-out" });
+    const localSettings = createMemorySettingsStore();
+    const remoteSettings = createMemorySettingsStore();
+    const sync = createAccountSync({
+      auth: authServiceFrom(authStore),
+      localDrops: createMemoryDropStore(),
+      localColonies: createMemoryColonyStore(),
+      localSettings,
+      createSession: () =>
+        sessionOf(createMemoryDropStore(), createMemoryColonyStore(), remoteSettings),
+      mergeLocalIntoAccount: async () => {},
+    });
+    return { authStore, localSettings, remoteSettings, settings: sync.settings };
+  }
+
+  it("keeps the settings local for a visitor without an account", () => {
+    const { localSettings, settings } = setup();
+
+    settings.set("planner", SETTINGS);
+
+    expect(localSettings.get("planner")).toEqual(SETTINGS);
+  });
+
+  it("switches the settings to the account once signed in and sends changes there", async () => {
+    const { authStore, localSettings, remoteSettings, settings } = setup();
+    localSettings.set("planner", SETTINGS);
+    remoteSettings.set("planner", ACCOUNT_SETTINGS);
+
+    authStore.setState({ status: "signed-in", user: USER });
+    await settle();
+
+    expect(settings.get("planner")).toEqual(ACCOUNT_SETTINGS);
+    settings.set("planner", { ...SETTINGS, updatedAt: 30 });
+    expect(remoteSettings.get("planner")).toEqual({ ...SETTINGS, updatedAt: 30 });
+    expect(localSettings.get("planner")).toEqual({ ...SETTINGS, updatedAt: 30 });
   });
 });

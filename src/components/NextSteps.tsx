@@ -1,6 +1,11 @@
 import { useId, useState } from "react";
 import { CATEGORIES, type Catalog, type Category } from "../planner/catalog";
-import { nextSteps, type NextStep, type StepOrder } from "../planner/nextSteps";
+import {
+  nextSteps,
+  withoutWallUpgrades,
+  type NextStep,
+  type StepOrder,
+} from "../planner/nextSteps";
 import type { ColonyBuildings } from "../store/colonyStore";
 
 const COLLAPSED_COUNT = 5;
@@ -43,16 +48,27 @@ type NextStepsProps = {
   colonyId: string;
   starBaseLevel: number;
   buildings: ColonyBuildings;
+  hideWallUpgrades: boolean;
+  onHideWallUpgradesChange: (value: boolean) => void;
   onDone: (step: NextStep) => void;
 };
 
-export function NextSteps({ catalog, colonyId, starBaseLevel, buildings, onDone }: NextStepsProps) {
+export function NextSteps({
+  catalog,
+  colonyId,
+  starBaseLevel,
+  buildings,
+  hideWallUpgrades,
+  onHideWallUpgradesChange,
+  onDone,
+}: NextStepsProps) {
   const [order, setOrder] = useState<StepOrder>("fastest");
   const [category, setCategory] = useState<Category | null>(null);
   const [expanded, setExpanded] = useState(false);
   const selectId = useId();
   const categoryId = useId();
-  const steps = nextSteps(catalog, colonyId, starBaseLevel, buildings, order, category);
+  const allSteps = nextSteps(catalog, colonyId, starBaseLevel, buildings, order, category);
+  const steps = hideWallUpgrades ? withoutWallUpgrades(allSteps) : allSteps;
   const shown = expanded ? steps : steps.slice(0, COLLAPSED_COUNT);
 
   return (
@@ -60,6 +76,14 @@ export function NextSteps({ catalog, colonyId, starBaseLevel, buildings, onDone 
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-white/50">Next steps</h3>
         <span className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-sm text-white/60">
+            <input
+              type="checkbox"
+              checked={hideWallUpgrades}
+              onChange={(event) => onHideWallUpgradesChange(event.target.checked)}
+            />
+            Hide wall upgrades
+          </label>
           <label htmlFor={categoryId} className="text-sm text-white/60">
             Category
           </label>

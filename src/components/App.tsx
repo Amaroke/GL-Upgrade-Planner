@@ -14,12 +14,14 @@ import { useReadyNotifications } from "../hooks/useReadyNotifications";
 import { CATALOG, type Catalog } from "../planner/catalog";
 import { createMemoryColonyStore, type ColonyStore } from "../store/colonyStore";
 import type { DropStore } from "../store/dropStore";
+import { createMemorySettingsStore, type SettingsStore } from "../store/settingsStore";
 
 type AppProps = {
   store: DropStore;
   auth: AuthService;
   now: () => number;
   colonyStore?: ColonyStore;
+  settingsStore?: SettingsStore;
   catalog?: Catalog;
 };
 
@@ -57,8 +59,9 @@ function TimerChipsRow({
   );
 }
 
-function App({ store, auth, now, colonyStore, catalog = CATALOG }: AppProps) {
+function App({ store, auth, now, colonyStore, settingsStore, catalog = CATALOG }: AppProps) {
   const [fallbackColonyStore] = useState(createMemoryColonyStore);
+  const [fallbackSettingsStore] = useState(createMemorySettingsStore);
   useReadyDropTitle(store, STORAGE_KEYS, now);
   const { permission, requestPermission } = useReadyNotifications(DROPS, store, now);
   const timers = useDropsTimers(DROPS, store, now);
@@ -80,7 +83,12 @@ function App({ store, auth, now, colonyStore, catalog = CATALOG }: AppProps) {
           </div>
         </div>
 
-        <Planner store={colonyStore ?? fallbackColonyStore} catalog={catalog} now={now} />
+        <Planner
+          store={colonyStore ?? fallbackColonyStore}
+          settingsStore={settingsStore ?? fallbackSettingsStore}
+          catalog={catalog}
+          now={now}
+        />
       </main>
 
       {advancedDrop && (

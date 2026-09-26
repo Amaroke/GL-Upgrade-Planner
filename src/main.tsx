@@ -12,21 +12,29 @@ import { createFirestoreAccountSync } from "./store/accountSync.ts";
 import { createLocalStorageColonyStore, type ColonyStore } from "./store/colonyStore.ts";
 import { createLocalStorageDropStore, type DropStore } from "./store/dropStore.ts";
 import { createAppFirestore } from "./store/firestoreDocumentStore.ts";
+import {
+  createLocalStorageSettingsStore,
+  migrateLegacyOnlyToUpgrade,
+  SETTINGS_KEYS,
+  type SettingsStore,
+} from "./store/settingsStore.ts";
 
 function createStores(
   app: FirebaseApp | null,
   auth: AuthService,
-  local: { drops: DropStore; colonies: ColonyStore },
-): { drops: DropStore; colonies: ColonyStore } {
+  local: { drops: DropStore; colonies: ColonyStore; settings: SettingsStore },
+): { drops: DropStore; colonies: ColonyStore; settings: SettingsStore } {
   if (!app) return local;
   try {
     return createFirestoreAccountSync({
       auth,
       localDrops: local.drops,
       localColonies: local.colonies,
+      localSettings: local.settings,
       db: createAppFirestore(app),
       dropKeys: DROPS.map((drop) => drop.storageKey),
       colonyIds: COLONIES.map((colony) => colony.id),
+      settingsKeys: SETTINGS_KEYS,
     });
   } catch {
     return local;
@@ -35,13 +43,22 @@ function createStores(
 
 const app = getFirebaseApp(readFirebaseConfig());
 const auth = createFirebaseAuthServiceFromApp(app);
+const localSettings = createLocalStorageSettingsStore();
+migrateLegacyOnlyToUpgrade(localSettings);
 const stores = createStores(app, auth, {
   drops: createLocalStorageDropStore(),
   colonies: createLocalStorageColonyStore(),
+  settings: localSettings,
 });
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App store={stores.drops} auth={auth} now={Date.now} colonyStore={stores.colonies} />
+    <App
+      store={stores.drops}
+      auth={auth}
+      now={Date.now}
+      colonyStore={stores.colonies}
+      settingsStore={stores.settings}
+    />
   </StrictMode>,
 );

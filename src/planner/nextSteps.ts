@@ -158,3 +158,7 @@ export function nextSteps(
     )
     .sort(comparator(order));
 }
+
+export function withoutWallUpgrades(steps: NextStep[]): NextStep[] {
+  return steps.filter((step) => !(step.shared && step.kind === "upgrade"));
+}

@@ -179,3 +179,42 @@ describe("Firestore security rules for Colonies", () => {
     await assertSucceeds(deleteDoc(ref));
   });
 });
+
+const VALID_SETTINGS = { onlyToUpgrade: true, hideWallUpgrades: false, updatedAt: 500 };
+const SETTINGS_PATH = "users/player-1/settings/planner";
+
+describe("Firestore security rules for settings", () => {
+  it("lets a signed-in player read and write their own settings", async () => {
+    const ref = doc(firestoreOf(testEnv.authenticatedContext("player-1")), SETTINGS_PATH);
+
+    await assertSucceeds(setDoc(ref, VALID_SETTINGS));
+    const snapshot = await assertSucceeds(getDoc(ref));
+    expect(snapshot.data()).toEqual(VALID_SETTINGS);
+  });
+
+  it("denies another player and unauthenticated visitors", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(firestoreOf(context), SETTINGS_PATH), VALID_SETTINGS);
+    });
+
+    for (const context of [
+      testEnv.authenticatedContext("player-2"),
+      testEnv.unauthenticatedContext(),
+    ]) {
+      const ref = doc(firestoreOf(context), SETTINGS_PATH);
+      await assertFails(getDoc(ref));
+      await assertFails(setDoc(ref, VALID_SETTINGS));
+      await assertFails(deleteDoc(ref));
+    }
+  });
+
+  it("rejects unknown, missing or mistyped fields", async () => {
+    const ref = doc(firestoreOf(testEnv.authenticatedContext("player-1")), SETTINGS_PATH);
+
+    await assertFails(setDoc(ref, { ...VALID_SETTINGS, extra: true }));
+    await assertFails(setDoc(ref, { onlyToUpgrade: true, updatedAt: 500 }));
+    await assertFails(setDoc(ref, { ...VALID_SETTINGS, onlyToUpgrade: "yes" }));
+    await assertFails(setDoc(ref, { ...VALID_SETTINGS, hideWallUpgrades: 1 }));
+    await assertFails(setDoc(ref, { ...VALID_SETTINGS, updatedAt: -1 }));
+  });
+});

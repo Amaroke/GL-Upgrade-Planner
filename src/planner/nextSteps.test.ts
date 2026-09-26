@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { BuildingType, Catalog, Category } from "./catalog";
-import { nextSteps, parseDuration, type NextStep } from "./nextSteps";
+import { nextSteps, parseDuration, withoutWallUpgrades, type NextStep } from "./nextSteps";
 
 function type(
   id: string,
@@ -241,5 +241,25 @@ describe("nextSteps", () => {
     const steps = nextSteps(short, "main", 1, { mine: [1] }, "fastest");
 
     expect(steps[0]).toMatchObject({ targetLevel: 2, time: null, seconds: null });
+  });
+});
+
+describe("withoutWallUpgrades", () => {
+  it("drops shared-level upgrade steps and keeps every other step", () => {
+    const step = (kind: NextStep["kind"], shared: boolean): NextStep => ({
+      kind,
+      typeId: shared ? "walls" : "mine",
+      typeName: shared ? "Walls" : "Mine",
+      category: shared ? "Defense" : "Resource",
+      instance: 1,
+      count: 1,
+      shared,
+      targetLevel: 2,
+      time: "1m",
+      seconds: 60,
+    });
+    const steps = [step("upgrade", true), step("build", true), step("upgrade", false)];
+
+    expect(withoutWallUpgrades(steps)).toEqual([steps[1], steps[2]]);
   });
 });
