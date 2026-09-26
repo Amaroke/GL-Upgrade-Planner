@@ -18,38 +18,8 @@ jobs:
   ci:
     uses: ./.github/workflows/ci.yml
 
-  rules:
-    needs: ci
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - id: changed
-        env:
-          BEFORE: ${{ github.event.before }}
-        run: |
-          if [ -z "$BEFORE" ] || ! git cat-file -e "$BEFORE" 2>/dev/null || ! git diff --quiet "$BEFORE" HEAD -- firestore.rules; then
-            echo "deploy=true" >> "$GITHUB_OUTPUT"
-          fi
-      - if: steps.changed.outputs.deploy == 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - if: steps.changed.outputs.deploy == 'true'
-        run: npm ci
-      - if: steps.changed.outputs.deploy == 'true'
-        env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/service-account.json"
-      - if: steps.changed.outputs.deploy == 'true'
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/service-account.json
-        run: npx firebase deploy --only firestore:rules --project "${{ secrets.VITE_FIREBASE_PROJECT_ID }}" --non-interactive
-
   build:
-    needs: [ci, rules]
+    needs: ci
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
