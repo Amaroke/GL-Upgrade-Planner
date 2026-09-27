@@ -122,4 +122,40 @@ describe("createFirestoreColonyStore", () => {
 
     expect(readerStore.get("main")).toEqual(ENTRY);
   });
+
+  it("stores each Construction as one line and reads it back", async () => {
+    const db = firestoreOf(testEnv.authenticatedContext("player-1"));
+    const writer = createStore(db);
+    const entry: ColonyEntry = {
+      ...ENTRY,
+      constructions: [
+        {
+          kind: "upgrade",
+          typeId: "gold-mine",
+          instance: 2,
+          count: 1,
+          targetLevel: 3,
+          finishAt: 1790000000000,
+        },
+      ],
+      updatedAt: 700,
+    };
+
+    writer.set("main", entry);
+    writer.syncStatus.saveNow();
+    await new Promise<void>((resolve) => {
+      const unsubscribe = writer.syncStatus.subscribe(() => {
+        if (writer.syncStatus.getStatus() !== "synced") return;
+        unsubscribe();
+        resolve();
+      });
+    });
+
+    const snapshot = await getDoc(doc(db, "users/player-1/colonies/main"));
+    expect(snapshot.data()?.constructions).toEqual(["upgrade gold-mine 2 1 3 1790000000000"]);
+    const reader = createStore(firestoreOf(testEnv.authenticatedContext("player-1")));
+    reader.get("main");
+    await waitFor(reader, "main", 700);
+    expect(reader.get("main")).toEqual(entry);
+  });
 });

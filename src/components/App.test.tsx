@@ -1090,6 +1090,229 @@ describe("App", () => {
           });
         });
       });
+
+      describe("Constructions", () => {
+        const MINUTE = 60 * 1000;
+        let time = NOW;
+
+        beforeEach(() => {
+          time = NOW;
+          vi.useFakeTimers({ shouldAdvanceTime: true });
+        });
+        afterEach(() => vi.useRealTimers());
+
+        function renderConstructions(seedBuildings: Record<string, number[]>, starBase = 1) {
+          const colonyStore = createMemoryColonyStore();
+          seed(colonyStore, starBase, seedBuildings);
+          render(
+            <App
+              store={createMemoryDropStore()}
+              auth={SIGNED_OUT_AUTH}
+              now={() => time}
+              colonyStore={colonyStore}
+              catalog={stepCatalog()}
+            />,
+          );
+          return colonyStore;
+        }
+
+        function passTime(ms: number) {
+          time += ms;
+          act(() => {
+            vi.advanceTimersByTime(1000);
+          });
+        }
+
+        it("offers Start next to Done on every step whose time is known", () => {
+          renderConstructions({ observatory: [1], mine: [3, 1] });
+
+          expect(
+            stepItems().map(
+              (item) => within(item).queryByRole("button", { name: /^Start/ })?.textContent ?? null,
+            ),
+          ).toEqual(["Start", "Start", null]);
+          expect(screen.getByRole("button", { name: "Start Build Cannon" })).toBeInTheDocument();
+          expect(
+            screen.queryByRole("button", { name: "Start Upgrade Mine to level 2" }),
+          ).toBeNull();
+        });
+
+        it("shows a started step at the top with a countdown from the catalog time, not repeated below", async () => {
+          const colonyStore = renderConstructions({ observatory: [2], mine: [3, 2] });
+
+          await click("Start Upgrade Mine to level 3");
+
+          expect(steps()).toEqual(["Upgrade Mine to level 3 | 00:50:00", "Build Cannon | 5m"]);
+          expect(colonyStore.get("main")?.constructions).toEqual([
+            {
+              kind: "upgrade",
+              typeId: "mine",
+              instance: 2,
+              count: 1,
+              targetLevel: 3,
+              finishAt: NOW + 50 * MINUTE,
+            },
+          ]);
+          expect(colonyStore.get("main")?.buildings).toEqual({ observatory: [2], mine: [3, 2] });
+        });
+
+        it("counts the countdown down with the clock", async () => {
+          renderConstructions({ observatory: [2], mine: [3, 2] });
+          await click("Start Upgrade Mine to level 3");
+
+          passTime(20 * MINUTE);
+
+          expect(steps()[0]).toBe("Upgrade Mine to level 3 | 00:30:00");
+        });
+
+        it("hides only the started build when several are missing", async () => {
+          renderConstructions({ observatory: [2], mine: [3, 3] }, 2);
+
+          await userEvent.click(screen.getAllByRole("button", { name: "Start Build Cannon" })[0]);
+
+          expect(steps()).toEqual([
+            "Build Cannon | 00:05:00",
+            "Build Cannon | 5m",
+            "Build Mine | 30m",
+            "Upgrade Mine to level 4 | 60m",
+            "Upgrade Mine to level 4 | 60m",
+          ]);
+        });
+
+        it("counts Constructions in the five steps shown by default", async () => {
+          renderConstructions({}, 3);
+
+          await click("Start Build Laser");
+
+          expect(steps()).toHaveLength(5);
+          expect(steps()[0]).toBe("Build Laser | 00:01:00");
+          expect(screen.getByRole("button", { name: "Show all 9 steps" })).toBeInTheDocument();
+        });
+
+        it("applies the step and removes the Construction on Done before the Finish date", async () => {
+          const colonyStore = renderConstructions({ observatory: [2], mine: [3, 2] });
+          await click("Start Upgrade Mine to level 3");
+
+          await click("Done Upgrade Mine to level 3");
+
+          expect(levelsOf("Mine")).toEqual(["3", "3"]);
+          expect(steps()).toEqual(["Build Cannon | 5m"]);
+          expect(colonyStore.get("main")?.constructions ?? []).toEqual([]);
+        });
+
+        it("applies the step on Done after the Finish date", async () => {
+          const colonyStore = renderConstructions({ observatory: [2], mine: [3, 3] });
+          await click("Start Build Cannon");
+          passTime(10 * MINUTE);
+
+          expect(steps()).toEqual(["Build Cannon | 00:00:00"]);
+          await click("Done Build Cannon");
+
+          expect(levelsOf("Cannon")).toEqual(["1"]);
+          expect(screen.getByText("Nothing to build or upgrade")).toBeInTheDocument();
+          expect(colonyStore.get("main")?.constructions ?? []).toEqual([]);
+        });
+
+        it("asks for a confirmation before cancelling and keeps the Construction when declined", async () => {
+          const colonyStore = renderConstructions({ observatory: [2], mine: [3, 2] });
+          await click("Start Upgrade Mine to level 3");
+
+          await click("Cancel Upgrade Mine to level 3");
+
+          expect(screen.getByText("Cancel this Construction?")).toBeInTheDocument();
+          await click("Keep Upgrade Mine to level 3");
+
+          expect(screen.queryByText("Cancel this Construction?")).toBeNull();
+          expect(steps()[0]).toBe("Upgrade Mine to level 3 | 00:50:00");
+          expect(colonyStore.get("main")?.constructions).toHaveLength(1);
+        });
+
+        it("removes the Construction without changing the Colony when the cancel is confirmed", async () => {
+          const colonyStore = renderConstructions({ observatory: [2], mine: [3, 2] });
+          await click("Start Upgrade Mine to level 3");
+
+          await click("Cancel Upgrade Mine to level 3");
+          await click("Confirm cancel Upgrade Mine to level 3");
+
+          expect(steps()).toEqual(["Build Cannon | 5m", "Upgrade Mine to level 3 | 50m"]);
+          expect(colonyStore.get("main")).toEqual({
+            starBaseLevel: 1,
+            buildings: { observatory: [2], mine: [3, 2] },
+            updatedAt: NOW,
+          });
+        });
+
+        it("applies an upgrade to a Building still below its target after the levels were reordered", async () => {
+          const colonyStore = renderConstructions({ observatory: [2], mine: [4, 3] }, 2);
+          await click("Start Upgrade Mine to level 5");
+
+          await typeAndCommit(screen.getByRole("spinbutton", { name: "Mine 2 level" }), "5");
+          await userEvent.click(
+            screen.getAllByRole("button", { name: "Done Upgrade Mine to level 5" })[0],
+          );
+
+          expect(colonyStore.get("main")?.buildings.mine).toEqual([5, 5]);
+        });
+
+        it("leaves the levels alone when the upgrade was already applied by hand", async () => {
+          const colonyStore = renderConstructions({ observatory: [2], mine: [3, 2] }, 2);
+          await click("Start Upgrade Mine to level 4");
+
+          await typeAndCommit(screen.getByRole("spinbutton", { name: "Mine 1 level" }), "5");
+          await click("Done Upgrade Mine to level 4");
+
+          expect(colonyStore.get("main")?.buildings.mine).toEqual([5, 2]);
+          expect(colonyStore.get("main")?.constructions ?? []).toEqual([]);
+        });
+
+        it("disables Start once ten Constructions are running", () => {
+          const colonyStore = createMemoryColonyStore();
+          colonyStore.set("main", {
+            starBaseLevel: 1,
+            buildings: { observatory: [2], mine: [3, 3] },
+            constructions: Array.from({ length: 10 }, () => ({
+              kind: "upgrade" as const,
+              typeId: "observatory",
+              instance: 1,
+              count: 1,
+              targetLevel: 3,
+              finishAt: NOW + MINUTE,
+            })),
+            updatedAt: 1,
+          });
+          render(
+            <App
+              store={createMemoryDropStore()}
+              auth={SIGNED_OUT_AUTH}
+              now={() => time}
+              colonyStore={colonyStore}
+              catalog={stepCatalog()}
+            />,
+          );
+          act(() => screen.getByRole("button", { name: "Show all 11 steps" }).click());
+
+          expect(screen.getByRole("button", { name: "Start Build Cannon" })).toBeDisabled();
+        });
+
+        it("keeps Constructions after a reload", async () => {
+          const colonyStore = renderConstructions({ observatory: [2], mine: [3, 2] });
+          await click("Start Upgrade Mine to level 3");
+          cleanup();
+
+          time = NOW + 10 * MINUTE;
+          render(
+            <App
+              store={createMemoryDropStore()}
+              auth={SIGNED_OUT_AUTH}
+              now={() => time}
+              colonyStore={colonyStore}
+              catalog={stepCatalog()}
+            />,
+          );
+
+          expect(steps()[0]).toBe("Upgrade Mine to level 3 | 00:40:00");
+        });
+      });
     });
 
     describe("Walls, which share one level", () => {

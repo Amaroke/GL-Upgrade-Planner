@@ -26,6 +26,22 @@ function behavesLikeAColonyStore(name: string, create: () => ColonyStore) {
       });
     });
 
+    it("records the Constructions of a Colony", () => {
+      const store = create();
+      const constructions = [
+        {
+          kind: "upgrade" as const,
+          typeId: "mine",
+          instance: 2,
+          count: 1,
+          targetLevel: 3,
+          finishAt: 900,
+        },
+      ];
+      store.set("main", { ...entry(4, 500, { mine: [3, 2] }), constructions });
+      expect(store.get("main")?.constructions).toEqual(constructions);
+    });
+
     it("keeps each Colony separate", () => {
       const store = create();
       store.set("main", entry(4, 500));
@@ -105,6 +121,10 @@ describe("createLocalStorageColonyStore", () => {
     '{"starBaseLevel":2,"updatedAt":1,"buildings":[]}',
     '{"starBaseLevel":2,"updatedAt":1,"buildings":{"mine":"x"}}',
     '{"starBaseLevel":2,"updatedAt":1,"buildings":{"mine":["x"]}}',
+    '{"starBaseLevel":2,"updatedAt":1,"constructions":{}}',
+    '{"starBaseLevel":2,"updatedAt":1,"constructions":[{"kind":"repair","typeId":"mine","instance":1,"count":1,"targetLevel":2,"finishAt":5}]}',
+    '{"starBaseLevel":2,"updatedAt":1,"constructions":[{"kind":"build","typeId":3,"instance":1,"count":1,"targetLevel":2,"finishAt":5}]}',
+    '{"starBaseLevel":2,"updatedAt":1,"constructions":[{"kind":"build","typeId":"mine","instance":1,"count":1,"targetLevel":2}]}',
   ])("treats the corrupted stored value %s as never set", (value) => {
     localStorage.setItem("gl-colony-main", value);
     expect(createLocalStorageColonyStore().get("main")).toBeNull();

@@ -6,9 +6,19 @@ import {
 
 export type ColonyBuildings = Record<string, number[]>;
 
+export type Construction = {
+  kind: "build" | "upgrade";
+  typeId: string;
+  instance: number;
+  count: number;
+  targetLevel: number;
+  finishAt: number;
+};
+
 export type ColonyEntry = {
   starBaseLevel: number;
   buildings: ColonyBuildings;
+  constructions?: Construction[];
   updatedAt: number;
 };
 
@@ -27,6 +37,16 @@ function isColonyBuildings(value: unknown): value is ColonyBuildings {
   );
 }
 
+function isConstruction(value: unknown): value is Construction {
+  if (typeof value !== "object" || value === null) return false;
+  const { kind, typeId, instance, count, targetLevel, finishAt } = value as Record<string, unknown>;
+  return (
+    (kind === "build" || kind === "upgrade") &&
+    typeof typeId === "string" &&
+    [instance, count, targetLevel, finishAt].every(isFiniteNumber)
+  );
+}
+
 function sortedDescending(buildings: ColonyBuildings): ColonyBuildings {
   return Object.fromEntries(
     Object.entries(buildings).map(([id, levels]) => [id, [...levels].sort((a, b) => b - a)]),
@@ -35,10 +55,18 @@ function sortedDescending(buildings: ColonyBuildings): ColonyBuildings {
 
 export function toColonyEntry(value: unknown): ColonyEntry | null {
   if (typeof value !== "object" || value === null) return null;
-  const { starBaseLevel, buildings = {}, updatedAt } = value as Record<string, unknown>;
+  const {
+    starBaseLevel,
+    buildings = {},
+    constructions,
+    updatedAt,
+  } = value as Record<string, unknown>;
   if (!isFiniteNumber(starBaseLevel) || !isFiniteNumber(updatedAt)) return null;
   if (!isColonyBuildings(buildings)) return null;
-  return { starBaseLevel, buildings: sortedDescending(buildings), updatedAt };
+  const entry: ColonyEntry = { starBaseLevel, buildings: sortedDescending(buildings), updatedAt };
+  if (constructions === undefined) return entry;
+  if (!Array.isArray(constructions) || !constructions.every(isConstruction)) return null;
+  return constructions.length > 0 ? { ...entry, constructions } : entry;
 }
 
 export function createLocalStorageColonyStore(): ColonyStore {

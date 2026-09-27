@@ -172,6 +172,78 @@ describe("Firestore security rules for Colonies", () => {
     await assertFails(setDoc(ref, { ...VALID_COLONY, buildings: tooManyTypes }));
   });
 
+  describe("Constructions", () => {
+    const CONSTRUCTION = "upgrade gold-mine 2 1 3 900";
+    const MAIN_PLANET_COUNTS = [1, 12, 12, 5, 5, 1, 1, 2, 2, 2, 3, 1, 7, 7, 2, 2, 3, 3, 1, 4, 300];
+
+    function withConstructions(constructions: unknown) {
+      return { ...VALID_COLONY, constructions };
+    }
+
+    it("accepts valid Constructions up to the wide bounds", async () => {
+      const ref = doc(firestoreOf(testEnv.authenticatedContext("player-1")), COLONY_PATH);
+      const widest = `build ${"a".repeat(64)} 500 500 99 4102444799999`;
+
+      await assertSucceeds(setDoc(ref, withConstructions([])));
+      await assertSucceeds(setDoc(ref, withConstructions([CONSTRUCTION])));
+      await assertSucceeds(setDoc(ref, withConstructions(Array(10).fill(widest))));
+      const snapshot = await getDoc(ref);
+      expect(snapshot.data()?.constructions).toHaveLength(10);
+    });
+
+    it("accepts ten Constructions on a fully built main planet", async () => {
+      const ref = doc(firestoreOf(testEnv.authenticatedContext("player-1")), COLONY_PATH);
+      const buildings = Object.fromEntries(
+        MAIN_PLANET_COUNTS.map((count, index) => [`type-${index}`, Array(count).fill(11)]),
+      );
+
+      await assertSucceeds(
+        setDoc(ref, {
+          starBase: 20,
+          buildings,
+          constructions: Array(10).fill(CONSTRUCTION),
+          updatedAt: 500,
+        }),
+      );
+    });
+
+    it("rejects malformed Constructions", async () => {
+      const ref = doc(firestoreOf(testEnv.authenticatedContext("player-1")), COLONY_PATH);
+
+      for (const constructions of [
+        {},
+        CONSTRUCTION,
+        Array(11).fill(CONSTRUCTION),
+        [`${CONSTRUCTION};${CONSTRUCTION}`, ...Array(9).fill(CONSTRUCTION)],
+        [
+          {
+            kind: "upgrade",
+            typeId: "gold-mine",
+            instance: 2,
+            count: 1,
+            targetLevel: 3,
+            finishAt: 900,
+          },
+        ],
+        [5],
+        ["upgrade gold-mine 2 1 3"],
+        ["upgrade gold-mine 2 1 3 900 7"],
+        ["repair gold-mine 2 1 3 900"],
+        ["upgrade  2 1 3 900"],
+        [`upgrade ${"a".repeat(65)} 2 1 3 900`],
+        ["upgrade Gold-Mine 2 1 3 900"],
+        ["upgrade gold-mine 0 1 3 900"],
+        ["upgrade gold-mine 2 501 3 900"],
+        ["upgrade gold-mine 2 1 100 900"],
+        ["upgrade gold-mine 2 1 2.5 900"],
+        ["upgrade gold-mine 2 1 3 -1"],
+        ["upgrade gold-mine 2 1 3 41024447999990"],
+      ]) {
+        await assertFails(setDoc(ref, withConstructions(constructions)));
+      }
+    });
+  });
+
   it("lets an owner delete their own Colony document", async () => {
     const ref = doc(firestoreOf(testEnv.authenticatedContext("player-1")), COLONY_PATH);
     await assertSucceeds(setDoc(ref, VALID_COLONY));
