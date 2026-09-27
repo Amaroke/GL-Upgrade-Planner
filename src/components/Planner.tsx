@@ -245,7 +245,6 @@ type ColonyTabProps = {
   colony: ColonyDefinition;
   store: ColonyStore;
   catalog: Catalog;
-  now: () => number;
   hideWallUpgrades: boolean;
   unlocked: boolean;
   selected: boolean;
@@ -256,15 +255,13 @@ function ColonyTab({
   colony,
   store,
   catalog,
-  now,
   hideWallUpgrades,
   unlocked,
   selected,
   onSelect,
 }: ColonyTabProps) {
   const entry = useColonyEntry(store, colony.id);
-  const hasFreeWorker =
-    unlocked && idleWorkers(catalog, colony.id, entry, now(), hideWallUpgrades) > 0;
+  const hasFreeWorker = unlocked && idleWorkers(catalog, colony.id, entry, hideWallUpgrades) > 0;
   const starBaseLevel = entry?.starBaseLevel ?? DEFAULT_STAR_BASE_LEVEL;
   const progress = colonyProgress(catalog, colony.id, entry?.buildings ?? NO_BUILDINGS);
   const overall = percent(progress.overall);
@@ -347,7 +344,6 @@ export function Planner({ store, settingsStore, catalog, now }: PlannerProps) {
             colony={colony}
             store={store}
             catalog={catalog}
-            now={now}
             hideWallUpgrades={hideWallUpgrades}
             unlocked={isColonyUnlocked(colony, observatory)}
             selected={colony.id === activeColony.id}

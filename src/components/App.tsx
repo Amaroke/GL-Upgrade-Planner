@@ -77,10 +77,9 @@ function App({ store, auth, now, colonyStore, settingsStore, catalog = CATALOG }
       totalIdleWorkers(
         catalog,
         colonies,
-        now(),
         settings.get(PLANNER_SETTINGS_KEY)?.hideWallUpgrades ?? false,
       ),
-    [catalog, colonies, settings, now],
+    [catalog, colonies, settings],
   );
   useReadyTitle(readNotices, now, readIdleWorkers);
   const { permission, requestPermission } = useReadyNotifications(readNotices, now);

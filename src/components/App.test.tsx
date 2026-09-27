@@ -1568,13 +1568,13 @@ describe("App", () => {
             expect(hasDot("Main planet")).toBe(true);
           });
 
-          it("comes back when the Construction is Finished", async () => {
+          it("stays hidden while the Construction is Finished", async () => {
             renderConstructions({ observatory: [2], mine: [3, 2] });
             await click("Start Upgrade Mine to level 3");
 
             passTime(50 * MINUTE);
 
-            expect(hasDot("Main planet")).toBe(true);
+            expect(hasDot("Main planet")).toBe(false);
           });
 
           it("follows the Worker count", async () => {
@@ -2090,7 +2090,7 @@ describe("App", () => {
       expect(document.title).toBe(`(4) ${DEFAULT_TITLE}`);
     });
 
-    it("gives the Worker back to the count once its Construction is Finished", () => {
+    it("counts a Finished Construction once, its Worker staying busy", () => {
       let time = NOW;
       const colonyStore = storeWithConstruction("main", NOW + 60 * 1000, 0);
       render(
@@ -2109,7 +2109,7 @@ describe("App", () => {
         vi.advanceTimersByTime(1000);
       });
 
-      expect(document.title).toBe(`(2) ${DEFAULT_TITLE}`);
+      expect(document.title).toBe(`(1) ${DEFAULT_TITLE}`);
     });
 
     it("restores the default title when the app unmounts", () => {

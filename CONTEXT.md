@@ -96,7 +96,7 @@ The level a Unit type has reached on one Colony. Unit levels are not shared betw
 _Avoid_: Unit upgrade, tech level
 
 **Worker**:
-A builder of one Colony. Each Colony has between one and five Workers, set by the Player, and each running Construction on that Colony occupies one of them.
+A builder of one Colony. Each Colony has between one and five Workers, set by the Player, and each Construction on that Colony occupies one of them until it is applied, even once Finished.
 _Avoid_: Builder, slot
 
 **Research**:
