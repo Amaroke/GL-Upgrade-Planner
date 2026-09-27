@@ -56,37 +56,12 @@ service cloud.firestore {
         && (values.size() <= 29 || isValidLevels(values[29]));
     }
 
-    function isBoundedInt(value, min, max) {
-      return value is int && value >= min && value <= max;
-    }
-
-    function isValidConstruction(value) {
-      return value is map
-        && value.keys().hasOnly(['kind', 'typeId', 'instance', 'count', 'targetLevel', 'finishAt'])
-        && value.keys().hasAll(['kind', 'typeId', 'instance', 'count', 'targetLevel', 'finishAt'])
-        && value.kind in ['build', 'upgrade']
-        && value.typeId is string
-        && value.typeId.size() >= 1
-        && value.typeId.size() <= 64
-        && isBoundedInt(value.instance, 1, 500)
-        && isBoundedInt(value.count, 1, 500)
-        && isBoundedInt(value.targetLevel, 1, 99)
-        && isValidTimestamp(value.finishAt);
-    }
-
     function isValidConstructions(values) {
+      let count = '([1-9][0-9]?|[1-4][0-9]{2}|500)';
+      let entry = '(build|upgrade) [a-z0-9-]{1,64} ' + count + ' ' + count + ' [1-9][0-9]? [0-9]{1,13}';
       return values is list
         && values.size() <= 10
-        && (values.size() <= 0 || isValidConstruction(values[0]))
-        && (values.size() <= 1 || isValidConstruction(values[1]))
-        && (values.size() <= 2 || isValidConstruction(values[2]))
-        && (values.size() <= 3 || isValidConstruction(values[3]))
-        && (values.size() <= 4 || isValidConstruction(values[4]))
-        && (values.size() <= 5 || isValidConstruction(values[5]))
-        && (values.size() <= 6 || isValidConstruction(values[6]))
-        && (values.size() <= 7 || isValidConstruction(values[7]))
-        && (values.size() <= 8 || isValidConstruction(values[8]))
-        && (values.size() <= 9 || isValidConstruction(values[9]));
+        && values.join(';').matches('(' + entry + '(;' + entry + '){0,9})?');
     }
 
     function isValidColony() {

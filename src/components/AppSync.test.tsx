@@ -471,9 +471,7 @@ describe("deferred sync", () => {
     expect(setDoc).toHaveBeenCalledWith(
       { path: "users/player-1/colonies/main" },
       expect.objectContaining({
-        constructions: [
-          expect.objectContaining({ finishAt: expect.any(Number), typeId: expect.any(String) }),
-        ],
+        constructions: [expect.stringMatching(/^(build|upgrade) [a-z-]+ \d+ \d+ \d+ \d+$/)],
       }),
     );
   });
@@ -486,16 +484,7 @@ describe("deferred sync", () => {
         data: () => ({
           starBase: 1,
           buildings: {},
-          constructions: [
-            {
-              kind: "build",
-              typeId: "starport",
-              instance: 1,
-              count: 1,
-              targetLevel: 1,
-              finishAt: NOW + 3600 * 1000,
-            },
-          ],
+          constructions: [`build starport 1 1 1 ${NOW + 3600 * 1000}`],
           updatedAt: NOW + 5000,
         }),
       }),
