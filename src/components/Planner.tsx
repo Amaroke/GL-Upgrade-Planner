@@ -10,7 +10,7 @@ import {
   withSharedLevel,
 } from "../planner/buildings";
 import { constructionStep, startConstruction, withRemaining } from "../planner/constructions";
-import type { NextStep } from "../planner/nextSteps";
+import { STAR_BASE_ID, type NextStep } from "../planner/nextSteps";
 import { colonyProgress } from "../planner/progress";
 import { DEFAULT_WORKERS, idleWorkers } from "../planner/workers";
 import { filterToUpgrade } from "../planner/statuses";
@@ -129,8 +129,15 @@ function ColonyPanel({
     return index === -1 ? levels : withLevel(levels, index, step.targetLevel);
   }
 
+  function applied(step: NextStep): { starBaseLevel: number } | { buildings: ColonyBuildings } {
+    if (step.typeId === STAR_BASE_ID) {
+      return { starBaseLevel: Math.max(starBaseLevel, step.targetLevel) };
+    }
+    return { buildings: { ...buildings, [step.typeId]: appliedLevels(step) } };
+  }
+
   function applyStep(step: NextStep) {
-    saveLevels(step.typeId, appliedLevels(step));
+    save(applied(step));
   }
 
   function startStep(step: NextStep, seconds: number) {
@@ -150,9 +157,8 @@ function ColonyPanel({
   }
 
   function applyConstruction(index: number) {
-    const step = constructionStep(catalog, constructions[index]);
     save({
-      buildings: { ...buildings, [step.typeId]: appliedLevels(step) },
+      ...applied(constructionStep(catalog, constructions[index])),
       constructions: withoutConstruction(index),
     });
   }

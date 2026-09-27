@@ -64,7 +64,7 @@ Status of a Building type with nothing left to build or upgrade at the current S
 _Avoid_: Complete, done
 
 **Next step**:
-An action the Planner recommends on a Colony, shown with the time it takes: building one Missing Building, raising one Building Below limit by one level, unlocking a Unit type or raising one Unit level by one.
+An action the Planner recommends on a Colony, shown with the time it takes: raising the Star Base by one level, building one Missing Building, raising one Building Below limit by one level, unlocking a Unit type or raising one Unit level by one.
 _Avoid_: Suggestion, todo, task
 
 **Planner**:

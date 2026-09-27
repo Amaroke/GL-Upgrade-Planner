@@ -5,11 +5,14 @@ import type { ColonyBuildings } from "../store/colonyStore";
 
 export type StepOrder = "fastest" | "longest";
 
+export const STAR_BASE_ID = "star-base";
+export const STAR_BASE_NAME = "Star Base";
+
 export type NextStep = {
   kind: "build" | "upgrade";
   typeId: string;
   typeName: string;
-  category: Category;
+  category: Category | null;
   instance: number;
   count: number;
   shared: boolean;
@@ -139,6 +142,25 @@ function sharedStepsForType(
   return steps;
 }
 
+function starBaseSteps(catalog: Catalog, starBaseLevel: number): NextStep[] {
+  const next = catalog.starBase.find((entry) => entry.level === starBaseLevel + 1);
+  if (!next) return [];
+  return [
+    {
+      kind: "upgrade",
+      typeId: STAR_BASE_ID,
+      typeName: STAR_BASE_NAME,
+      category: null,
+      instance: 1,
+      count: 1,
+      shared: false,
+      targetLevel: next.level,
+      time: next.time,
+      seconds: parseDuration(next.time),
+    },
+  ];
+}
+
 const KIND_RANK: Record<NextStep["kind"], number> = { build: 0, upgrade: 1 };
 
 function comparator(order: StepOrder) {
@@ -160,7 +182,7 @@ export function nextSteps(
   order: StepOrder,
   category: Category | null = null,
 ): NextStep[] {
-  return groupedBuildingsForColony(catalog, colonyId)
+  const buildingSteps = groupedBuildingsForColony(catalog, colonyId)
     .flatMap((group) => group.types)
     .filter((type) => category === null || type.category === category)
     .flatMap((type) =>
@@ -169,8 +191,9 @@ export function nextSteps(
         starBaseLevel,
         buildings[type.id] ?? [],
       ),
-    )
-    .sort(comparator(order));
+    );
+  const starBase = category === null ? starBaseSteps(catalog, starBaseLevel) : [];
+  return [...buildingSteps, ...starBase].sort(comparator(order));
 }
 
 export function withoutWallUpgrades(steps: NextStep[]): NextStep[] {

@@ -1,6 +1,6 @@
 import type { Catalog } from "./catalog";
 import { COLONIES } from "./colonies";
-import { stepLabel, type NextStep } from "./nextSteps";
+import { STAR_BASE_ID, STAR_BASE_NAME, stepLabel, type NextStep } from "./nextSteps";
 import type { Notice } from "../hooks/useReadyNotifications";
 import type { ColonyStore, Construction } from "../store/colonyStore";
 
@@ -17,11 +17,12 @@ export function startConstruction(step: NextStep, seconds: number, now: number):
 
 export function constructionStep(catalog: Catalog, construction: Construction): NextStep {
   const type = catalog.buildings.find((entry) => entry.id === construction.typeId);
+  const isStarBase = construction.typeId === STAR_BASE_ID;
   return {
     kind: construction.kind,
     typeId: construction.typeId,
-    typeName: type?.name ?? construction.typeId,
-    category: type?.category ?? "Resource",
+    typeName: isStarBase ? STAR_BASE_NAME : (type?.name ?? construction.typeId),
+    category: isStarBase ? null : (type?.category ?? "Resource"),
     instance: construction.instance,
     count: construction.count,
     shared: type?.sharedLevel ?? false,
