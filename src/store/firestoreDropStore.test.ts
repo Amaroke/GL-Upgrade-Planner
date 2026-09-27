@@ -202,3 +202,52 @@ describe("createFirestoreDropStore sync status", () => {
     expect(setDoc).not.toHaveBeenCalled();
   });
 });
+
+describe("createFirestoreDropStore loading", () => {
+  afterEach(() => {
+    createdStores.splice(0).forEach((store) => store.dispose());
+    vi.restoreAllMocks();
+  });
+
+  function captureListener() {
+    const captured: {
+      onNext?: (snapshot: unknown) => void;
+      onError?: (error: unknown) => void;
+    } = {};
+    vi.mocked(onSnapshot).mockImplementation((...args: unknown[]) => {
+      captured.onNext = args[1] as (snapshot: unknown) => void;
+      captured.onError = args[2] as (error: unknown) => void;
+      return vi.fn();
+    });
+    return captured;
+  }
+
+  it("is not loaded until the account has answered, even with no document", () => {
+    const listener = captureListener();
+    const store = createStore();
+    const onChange = vi.fn();
+    store.subscribe("gl-timer-star-battery", onChange);
+
+    expect(store.isLoaded("gl-timer-star-battery")).toBe(false);
+
+    listener.onNext?.({ data: () => undefined });
+
+    expect(store.isLoaded("gl-timer-star-battery")).toBe(true);
+    expect(onChange).toHaveBeenCalled();
+  });
+
+  it.each(["permission-denied", "unavailable"])(
+    "counts as loaded once the listener stops on a %s error, and notifies",
+    (code) => {
+      const listener = captureListener();
+      const store = createStore();
+      const onChange = vi.fn();
+      store.subscribe("gl-timer-star-battery", onChange);
+
+      listener.onError?.({ code });
+
+      expect(store.isLoaded("gl-timer-star-battery")).toBe(true);
+      expect(onChange).toHaveBeenCalled();
+    },
+  );
+});

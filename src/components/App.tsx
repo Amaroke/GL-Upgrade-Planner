@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import { AccountControl } from "./AccountControl";
 import { Modal } from "./Modal";
 import { NotificationsControl } from "./NotificationsControl";
@@ -14,6 +14,7 @@ import { useReadyNotifications } from "../hooks/useReadyNotifications";
 import { CATALOG, type Catalog } from "../planner/catalog";
 import { constructionNotices } from "../planner/constructions";
 import { totalIdleWorkers } from "../planner/workers";
+import type { LoadingStore } from "../store/accountSync";
 import { createMemoryColonyStore, type ColonyStore } from "../store/colonyStore";
 import type { DropStore } from "../store/dropStore";
 import {
@@ -29,27 +30,34 @@ type AppProps = {
   colonyStore?: ColonyStore;
   settingsStore?: SettingsStore;
   catalog?: Catalog;
+  loading?: LoadingStore;
 };
 
+const NOT_LOADING: LoadingStore = { isLoading: () => false, subscribe: () => () => {} };
+
+function useIsLoading(auth: AuthService, loading: LoadingStore | undefined): boolean {
+  const isRestoring = useAuth(auth).status === "restoring";
+  const store = loading ?? NOT_LOADING;
+  const isStoreLoading = useSyncExternalStore(store.subscribe, store.isLoading);
+  return loading ? isStoreLoading : isRestoring;
+}
+
 function TimerChipsRow({
-  auth,
+  isLoading,
   timers,
   onOpenAdvanced,
 }: {
-  auth: AuthService;
+  isLoading: boolean;
   timers: Record<string, DropTimerState>;
   onOpenAdvanced: (storageKey: string) => void;
 }) {
-  const authState = useAuth(auth);
-  const isRestoring = authState.status === "restoring";
-
   return (
     <div
-      role={isRestoring ? "status" : undefined}
-      aria-label={isRestoring ? "Loading your timers" : undefined}
+      role={isLoading ? "status" : undefined}
+      aria-label={isLoading ? "Loading your timers" : undefined}
       className="flex flex-col gap-3 sm:flex-1 sm:flex-row sm:flex-nowrap sm:justify-center sm:gap-4"
     >
-      {isRestoring
+      {isLoading
         ? DROPS.map((drop) => <TimerChipSkeleton key={drop.storageKey} />)
         : DROPS.map((drop) => (
             <TimerChip
@@ -63,23 +71,34 @@ function TimerChipsRow({
   );
 }
 
-function App({ store, auth, now, colonyStore, settingsStore, catalog = CATALOG }: AppProps) {
+function App({
+  store,
+  auth,
+  now,
+  colonyStore,
+  settingsStore,
+  catalog = CATALOG,
+  loading,
+}: AppProps) {
+  const isLoading = useIsLoading(auth, loading);
   const [fallbackColonyStore] = useState(createMemoryColonyStore);
   const [fallbackSettingsStore] = useState(createMemorySettingsStore);
   const colonies = colonyStore ?? fallbackColonyStore;
   const settings = settingsStore ?? fallbackSettingsStore;
   const readNotices = useCallback(
-    () => [...dropNotices(store), ...constructionNotices(catalog, colonies)],
-    [store, catalog, colonies],
+    () => (isLoading ? [] : [...dropNotices(store), ...constructionNotices(catalog, colonies)]),
+    [store, catalog, colonies, isLoading],
   );
   const readIdleWorkers = useCallback(
     () =>
-      totalIdleWorkers(
-        catalog,
-        colonies,
-        settings.get(PLANNER_SETTINGS_KEY)?.hideWallUpgrades ?? false,
-      ),
-    [catalog, colonies, settings],
+      isLoading
+        ? 0
+        : totalIdleWorkers(
+            catalog,
+            colonies,
+            settings.get(PLANNER_SETTINGS_KEY)?.hideWallUpgrades ?? false,
+          ),
+    [catalog, colonies, settings, isLoading],
   );
   useReadyTitle(readNotices, now, readIdleWorkers);
   const { permission, requestPermission } = useReadyNotifications(readNotices, now);
@@ -95,14 +114,24 @@ function App({ store, auth, now, colonyStore, settingsStore, catalog = CATALOG }
             <NotificationsControl permission={permission} requestPermission={requestPermission} />
           </div>
 
-          <TimerChipsRow auth={auth} timers={timers} onOpenAdvanced={setAdvancedDropKey} />
+          <TimerChipsRow
+            isLoading={isLoading}
+            timers={timers}
+            onOpenAdvanced={setAdvancedDropKey}
+          />
 
           <div className="sm:shrink-0">
             <AccountControl auth={auth} store={store} />
           </div>
         </div>
 
-        <Planner store={colonies} settingsStore={settings} catalog={catalog} now={now} />
+        <Planner
+          store={colonies}
+          settingsStore={settings}
+          catalog={catalog}
+          now={now}
+          isLoading={isLoading}
+        />
       </main>
 
       {advancedDrop && (

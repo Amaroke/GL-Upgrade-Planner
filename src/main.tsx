@@ -8,7 +8,7 @@ import { createFirebaseAuthServiceFromApp, getFirebaseApp } from "./auth/firebas
 import { readFirebaseConfig } from "./config/firebaseConfig.ts";
 import { DROPS } from "./drops.ts";
 import { COLONIES } from "./planner/colonies.ts";
-import { createFirestoreAccountSync } from "./store/accountSync.ts";
+import { createFirestoreAccountSync, type LoadingStore } from "./store/accountSync.ts";
 import { createLocalStorageColonyStore, type ColonyStore } from "./store/colonyStore.ts";
 import { createLocalStorageDropStore, type DropStore } from "./store/dropStore.ts";
 import { createAppFirestore } from "./store/firestoreDocumentStore.ts";
@@ -23,7 +23,7 @@ function createStores(
   app: FirebaseApp | null,
   auth: AuthService,
   local: { drops: DropStore; colonies: ColonyStore; settings: SettingsStore },
-): { drops: DropStore; colonies: ColonyStore; settings: SettingsStore } {
+): { drops: DropStore; colonies: ColonyStore; settings: SettingsStore; loading?: LoadingStore } {
   if (!app) return local;
   try {
     return createFirestoreAccountSync({
@@ -59,6 +59,7 @@ createRoot(document.getElementById("root")!).render(
       now={Date.now}
       colonyStore={stores.colonies}
       settingsStore={stores.settings}
+      loading={stores.loading}
     />
   </StrictMode>,
 );

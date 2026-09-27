@@ -325,7 +325,34 @@ function ColonyTab({
   );
 }
 
-export function Planner({ store, settingsStore, catalog, now }: PlannerProps) {
+function PlannerSkeleton() {
+  return (
+    <div role="status" aria-label="Loading your Planner" className="animate-pulse">
+      <div className="mb-4 grid grid-cols-6 gap-1 sm:grid-cols-12">
+        {COLONIES.map((colony) => (
+          <div key={colony.id} className="h-14 rounded-lg bg-white/5" />
+        ))}
+      </div>
+      <div className="h-8 w-64 rounded bg-white/5" />
+      <div className="mt-6 flex flex-col gap-2">
+        {[0, 1, 2].map((row) => (
+          <div key={row} className="h-10 rounded-xl bg-white/5" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function Planner({ isLoading = false, ...props }: PlannerProps & { isLoading?: boolean }) {
+  return (
+    <section className="w-full flex-1 rounded-2xl border border-white/10 p-6">
+      <h2 className="mb-4 text-lg font-semibold text-white">Planner</h2>
+      {isLoading ? <PlannerSkeleton /> : <LoadedPlanner {...props} />}
+    </section>
+  );
+}
+
+function LoadedPlanner({ store, settingsStore, catalog, now }: PlannerProps) {
   const [activeId, setActiveId] = useState(MAIN_COLONY_ID);
   const [{ hideWallUpgrades }] = usePlannerOptions(settingsStore, now);
   const observatory = observatoryLevel(
@@ -336,9 +363,7 @@ export function Planner({ store, settingsStore, catalog, now }: PlannerProps) {
     COLONIES[0];
 
   return (
-    <section className="w-full flex-1 rounded-2xl border border-white/10 p-6">
-      <h2 className="mb-4 text-lg font-semibold text-white">Planner</h2>
-
+    <>
       <div
         role="tablist"
         aria-label="Colonies"
@@ -366,6 +391,6 @@ export function Planner({ store, settingsStore, catalog, now }: PlannerProps) {
         catalog={catalog}
         now={now}
       />
-    </section>
+    </>
   );
 }

@@ -10,6 +10,7 @@ import type { SendScheduler, SyncStatusStore } from "./sendScheduler";
 
 export type FirestoreColonyStore = ColonyStore & {
   syncStatus: SyncStatusStore;
+  isLoaded(key: string): boolean;
   dispose(): void;
 };
 

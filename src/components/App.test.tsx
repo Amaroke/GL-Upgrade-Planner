@@ -2802,6 +2802,70 @@ describe("App", () => {
     });
   });
 
+  describe("account loading", () => {
+    function fakeLoading(initial: boolean) {
+      let loading = initial;
+      const listeners = new Set<() => void>();
+      return {
+        isLoading: () => loading,
+        subscribe(onChange: () => void) {
+          listeners.add(onChange);
+          return () => listeners.delete(onChange);
+        },
+        finish() {
+          loading = false;
+          listeners.forEach((onChange) => onChange());
+        },
+      };
+    }
+
+    function renderLoading(loading: ReturnType<typeof fakeLoading>) {
+      const colonyStore = createMemoryColonyStore();
+      colonyStore.set("main", { starBaseLevel: 3, buildings: {}, updatedAt: 1 });
+      render(
+        <App
+          store={createMemoryDropStore({ "gl-timer-star-battery": NOW - 1000 })}
+          auth={authServiceFrom({
+            status: "signed-in",
+            user: { uid: "1", displayName: null, email: null },
+          })}
+          now={() => NOW}
+          colonyStore={colonyStore}
+          catalog={FIXTURE_CATALOG}
+          loading={loading}
+        />,
+      );
+    }
+
+    beforeEach(() => {
+      document.title = "GL Upgrade Planner";
+    });
+
+    it("shows loading states instead of values that are about to change", () => {
+      renderLoading(fakeLoading(true));
+
+      expect(screen.getByRole("status", { name: "Loading your timers" })).toBeInTheDocument();
+      expect(screen.queryByRole("group", { name: "Star Battery timer" })).toBeNull();
+      expect(screen.getByRole("status", { name: "Loading your Planner" })).toBeInTheDocument();
+      expect(screen.queryByRole("combobox", { name: "Star Base level" })).toBeNull();
+      expect(screen.queryByRole("tab", { name: "Main planet" })).toBeNull();
+      expect(document.title).toBe("GL Upgrade Planner");
+    });
+
+    it("shows the account values once they are loaded", () => {
+      const loading = fakeLoading(true);
+      renderLoading(loading);
+
+      act(() => loading.finish());
+
+      expect(screen.queryByRole("status", { name: "Loading your Planner" })).toBeNull();
+      expect(screen.queryByRole("status", { name: "Loading your timers" })).toBeNull();
+      expect(screen.getByRole("combobox", { name: "Star Base level" })).toHaveValue("3");
+      expect(chip("Star Battery")).toBeTruthy();
+      expect(document.title).toBe("(2) GL Upgrade Planner");
+    });
+  });
+
   describe("sync status indicator", () => {
     async function signIn(store: ReturnType<typeof fakeSyncedStore>) {
       const auth = createMemoryAuthService(() =>

@@ -63,6 +63,8 @@ function sessionOf(
     colonies,
     settings,
     syncStatus: drops.syncStatus ?? IDLE_STATUS,
+    isLoaded: () => true,
+    subscribeLoaded: () => () => {},
     dispose: () => drops.dispose?.(),
   };
 }
@@ -670,5 +672,111 @@ describe("createAccountSync settings", () => {
     settings.set("planner", { ...SETTINGS, updatedAt: 30 });
     expect(remoteSettings.get("planner")).toEqual({ ...SETTINGS, updatedAt: 30 });
     expect(localSettings.get("planner")).toEqual({ ...SETTINGS, updatedAt: 30 });
+  });
+});
+
+describe("createAccountSync loading", () => {
+  function loadingSession() {
+    let loaded = false;
+    const listeners = new Set<() => void>();
+    const session: AccountSession = {
+      ...sessionOf(createMemoryDropStore()),
+      isLoaded: () => loaded,
+      subscribeLoaded(onChange) {
+        listeners.add(onChange);
+        return () => listeners.delete(onChange);
+      },
+    };
+    return {
+      session,
+      finishLoading() {
+        loaded = true;
+        listeners.forEach((onChange) => onChange());
+      },
+    };
+  }
+
+  function syncWith(
+    authStore: ReturnType<typeof createAuthStore>,
+    session: AccountSession,
+    mergeLocalIntoAccount: () => Promise<void> = async () => {},
+  ) {
+    return createAccountSync({
+      auth: authServiceFrom(authStore),
+      localDrops: createMemoryDropStore(),
+      localColonies: createMemoryColonyStore(),
+      localSettings: createMemorySettingsStore(),
+      createSession: () => session,
+      mergeLocalIntoAccount,
+    });
+  }
+
+  it("is not loading for a visitor without an account", () => {
+    const sync = syncWith(createAuthStore({ status: "signed-out" }), loadingSession().session);
+
+    expect(sync.loading.isLoading()).toBe(false);
+  });
+
+  it("is loading while auth is restoring", () => {
+    const sync = syncWith(createAuthStore({ status: "restoring" }), loadingSession().session);
+
+    expect(sync.loading.isLoading()).toBe(true);
+  });
+
+  it("stays loading while the merge into the account is in flight", async () => {
+    const authStore = createAuthStore({ status: "restoring" });
+    const { session, finishLoading } = loadingSession();
+    finishLoading();
+    const merge = deferred<void>();
+    const sync = syncWith(authStore, session, () => merge.promise);
+
+    authStore.setState({ status: "signed-in", user: USER });
+    await settle();
+
+    expect(sync.loading.isLoading()).toBe(true);
+  });
+
+  it("stays loading until the account has delivered its data, then notifies", async () => {
+    const authStore = createAuthStore({ status: "restoring" });
+    const { session, finishLoading } = loadingSession();
+    const sync = syncWith(authStore, session);
+    const onChange = vi.fn();
+    sync.loading.subscribe(onChange);
+
+    authStore.setState({ status: "signed-in", user: USER });
+    await settle();
+    expect(sync.loading.isLoading()).toBe(true);
+
+    finishLoading();
+
+    expect(sync.loading.isLoading()).toBe(false);
+    expect(onChange).toHaveBeenCalled();
+  });
+
+  it("stops loading and notifies when restoring resolves to signed out", () => {
+    const authStore = createAuthStore({ status: "restoring" });
+    const sync = syncWith(authStore, loadingSession().session);
+    const onChange = vi.fn();
+    sync.loading.subscribe(onChange);
+
+    authStore.setState({ status: "signed-out" });
+
+    expect(sync.loading.isLoading()).toBe(false);
+    expect(onChange).toHaveBeenCalled();
+  });
+
+  it("stops following the account loading once signed out", async () => {
+    const authStore = createAuthStore({ status: "signed-in", user: USER });
+    const { session, finishLoading } = loadingSession();
+    const sync = syncWith(authStore, session);
+    await settle();
+
+    authStore.setState({ status: "signed-out" });
+    const onChange = vi.fn();
+    sync.loading.subscribe(onChange);
+    finishLoading();
+
+    expect(sync.loading.isLoading()).toBe(false);
+    expect(onChange).not.toHaveBeenCalled();
   });
 });
