@@ -64,7 +64,7 @@ Status of a Building type with nothing left to build or upgrade at the current S
 _Avoid_: Complete, done
 
 **Next step**:
-An action the Planner recommends on a Colony, shown with the time it takes: building one Missing Building, raising one Building Below limit by one level, unlocking a Unit type or raising one Unit level by one.
+An action the Planner recommends on a Colony, shown with the time it takes: raising the Star Base by one level, building one Missing Building, raising one Building Below limit by one level, unlocking a Unit type or raising one Unit level by one.
 _Avoid_: Suggestion, todo, task
 
 **Planner**:
@@ -96,7 +96,7 @@ The level a Unit type has reached on one Colony. Unit levels are not shared betw
 _Avoid_: Unit upgrade, tech level
 
 **Worker**:
-A builder of one Colony. Each Colony has between one and five Workers, set by the Player, and each running Construction on that Colony occupies one of them.
+A builder of one Colony. Each Colony has between one and five Workers, set by the Player, and each Construction on that Colony occupies one of them until it is applied, even once Finished.
 _Avoid_: Builder, slot
 
 **Research**:

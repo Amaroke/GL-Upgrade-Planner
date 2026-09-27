@@ -26,7 +26,14 @@ export type AccountSession = {
   colonies: ColonyStore;
   settings: SettingsStore;
   syncStatus: SyncStatusStore;
+  isLoaded(): boolean;
+  subscribeLoaded(onChange: () => void): () => void;
   dispose(): void;
+};
+
+export type LoadingStore = {
+  isLoading(): boolean;
+  subscribe(onChange: () => void): () => void;
 };
 
 export type SyncedDropStore = DropStore & {
@@ -40,6 +47,7 @@ export type AccountSync = {
   drops: SyncedDropStore;
   colonies: ColonyStore;
   settings: SettingsStore;
+  loading: LoadingStore;
 };
 
 function createSwitchingStore<S extends KeyedStore>(local: S, onWrite: () => void) {
@@ -91,8 +99,10 @@ export function createAccountSync(deps: {
 }): AccountSync {
   const sessions = new Map<string, AccountSession>();
   const syncStatusNotifier = createNotifier();
+  const loadingNotifier = createNotifier();
   let session: AccountSession | null = null;
   let unwatchSyncStatus: (() => void) | null = null;
+  let unwatchLoaded: (() => void) | null = null;
   let generation = 0;
   let mergingGeneration: number | null = null;
   let wroteDuringMerge = false;
@@ -118,10 +128,20 @@ export function createAccountSync(deps: {
     session = next;
     unwatchSyncStatus?.();
     unwatchSyncStatus = next ? next.syncStatus.subscribe(syncStatusNotifier.notify) : null;
+    unwatchLoaded?.();
+    unwatchLoaded = next ? next.subscribeLoaded(loadingNotifier.notify) : null;
     drops.switchTo(next?.drops ?? deps.localDrops);
     colonies.switchTo(next?.colonies ?? deps.localColonies);
     settings.switchTo(next?.settings ?? deps.localSettings);
     syncStatusNotifier.notify();
+    loadingNotifier.notify();
+  }
+
+  function isLoading(): boolean {
+    const state = deps.auth.getState();
+    if (state.status === "restoring") return true;
+    if (state.status !== "signed-in") return false;
+    return !(session && session === sessions.get(state.user.uid) && session.isLoaded());
   }
 
   async function activateForUid(uid: string, myGeneration: number) {
@@ -152,6 +172,7 @@ export function createAccountSync(deps: {
       sessions.forEach((existing) => existing.dispose());
       sessions.clear();
     }
+    loadingNotifier.notify();
   }
 
   handleAuthChange();
@@ -167,6 +188,7 @@ export function createAccountSync(deps: {
     },
     colonies: colonies.store,
     settings: settings.store,
+    loading: { isLoading, subscribe: loadingNotifier.subscribe },
   };
 }
 
@@ -210,16 +232,34 @@ export async function mergeLocalIntoAccount(
   ]);
 }
 
-function createFirestoreSession(db: Firestore, uid: string): AccountSession {
+type SessionKeys = {
+  dropKeys: readonly string[];
+  colonyIds: readonly string[];
+  settingsKeys: readonly string[];
+};
+
+function createFirestoreSession(db: Firestore, uid: string, keys: SessionKeys): AccountSession {
   const scheduler = createSendScheduler();
   const drops = createFirestoreDropStore(db, uid, scheduler);
   const colonies = createFirestoreColonyStore(db, uid, scheduler);
   const settings = createFirestoreSettingsStore(db, uid, scheduler);
+  const watched = [
+    { store: drops, keys: keys.dropKeys },
+    { store: colonies, keys: keys.colonyIds },
+    { store: settings, keys: keys.settingsKeys },
+  ];
   return {
     drops,
     colonies,
     settings,
     syncStatus: scheduler.syncStatus,
+    isLoaded: () => watched.every(({ store, keys }) => keys.every((key) => store.isLoaded(key))),
+    subscribeLoaded(onChange) {
+      const unsubscribes = watched.flatMap(({ store, keys }) =>
+        keys.map((key) => store.subscribe(key, onChange)),
+      );
+      return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
+    },
     dispose() {
       drops.dispose();
       colonies.dispose();
@@ -244,7 +284,7 @@ export function createFirestoreAccountSync(options: {
     localDrops,
     localColonies,
     localSettings,
-    createSession: (uid) => createFirestoreSession(db, uid),
+    createSession: (uid) => createFirestoreSession(db, uid, options),
     mergeLocalIntoAccount: (uid) =>
       mergeLocalIntoAccount(db, uid, {
         drops: localDrops,

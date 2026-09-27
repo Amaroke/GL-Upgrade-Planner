@@ -5,6 +5,7 @@ import { toPlannerSettings, type PlannerSettings, type SettingsStore } from "./s
 
 export type FirestoreSettingsStore = SettingsStore & {
   syncStatus: SyncStatusStore;
+  isLoaded(key: string): boolean;
   dispose(): void;
 };
 

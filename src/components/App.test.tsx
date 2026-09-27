@@ -907,6 +907,11 @@ describe("App", () => {
         const [observatory, mine, cannon, laser] = FIXTURE_CATALOG.buildings;
         return {
           ...FIXTURE_CATALOG,
+          starBase: [
+            { level: 1, time: null },
+            { level: 2, time: "3d" },
+            { level: 3, time: "4d" },
+          ],
           buildings: [
             withTimes(observatory, ["1d", "2d", "3d", "4d", "5d", "6d"]),
             withTimes(mine, ["30m", null, "50m", "60m", "70m", "80m"]),
@@ -916,7 +921,15 @@ describe("App", () => {
         };
       }
 
-      function renderSteps(seedBuildings: Record<string, number[]>, starBase = 1) {
+      function withTopStarBase(catalog: Catalog): Catalog {
+        return { ...catalog, starBase: catalog.starBase.slice(0, 1) };
+      }
+
+      function renderSteps(
+        seedBuildings: Record<string, number[]>,
+        starBase = 1,
+        catalog = stepCatalog(),
+      ) {
         const colonyStore = createMemoryColonyStore();
         seed(colonyStore, starBase, seedBuildings);
         render(
@@ -925,7 +938,7 @@ describe("App", () => {
             auth={SIGNED_OUT_AUTH}
             now={() => NOW}
             colonyStore={colonyStore}
-            catalog={stepCatalog()}
+            catalog={catalog}
           />,
         );
       }
@@ -948,7 +961,11 @@ describe("App", () => {
       it("lists one step per Building to build or upgrade with its time", () => {
         renderSteps({ observatory: [2], mine: [3, 2] });
 
-        expect(steps()).toEqual(["Build Cannon | 5m", "Upgrade Mine to level 3 | 50m"]);
+        expect(steps()).toEqual([
+          "Build Cannon | 5m",
+          "Upgrade Mine to level 3 | 50m",
+          "Upgrade Star Base to level 2 | 3d",
+        ]);
       });
 
       it("puts builds first, fastest first by default and longest first on demand", async () => {
@@ -958,12 +975,14 @@ describe("App", () => {
           "Build Cannon | 5m",
           "Upgrade Mine to level 3 | 50m",
           "Upgrade Observatory to level 2 | 2d",
+          "Upgrade Star Base to level 2 | 3d",
         ]);
 
         await userEvent.selectOptions(orderSelect(), "Longest first");
 
         expect(steps()).toEqual([
           "Build Cannon | 5m",
+          "Upgrade Star Base to level 2 | 3d",
           "Upgrade Observatory to level 2 | 2d",
           "Upgrade Mine to level 3 | 50m",
         ]);
@@ -974,6 +993,7 @@ describe("App", () => {
         expect(steps()).toEqual([
           "Build Cannon | 5m",
           "Upgrade Observatory to level 2 | 2d",
+          "Upgrade Star Base to level 2 | 3d",
           "Upgrade Mine to level 2 | time unknown",
         ]);
 
@@ -981,6 +1001,7 @@ describe("App", () => {
 
         expect(steps()).toEqual([
           "Build Cannon | 5m",
+          "Upgrade Star Base to level 2 | 3d",
           "Upgrade Observatory to level 2 | 2d",
           "Upgrade Mine to level 2 | time unknown",
         ]);
@@ -1038,7 +1059,11 @@ describe("App", () => {
       });
 
       it("says so when nothing is left to build or upgrade", () => {
-        renderSteps({ observatory: [2], mine: [3, 3], cannon: [1] });
+        renderSteps(
+          { observatory: [2], mine: [3, 3], cannon: [1] },
+          1,
+          withTopStarBase(stepCatalog()),
+        );
 
         expect(screen.getByText("Nothing to build or upgrade")).toBeInTheDocument();
         expect(screen.queryByRole("list", { name: "Next steps" })).toBeNull();
@@ -1049,7 +1074,34 @@ describe("App", () => {
 
         await typeAndCommit(screen.getByRole("spinbutton", { name: "Mine 2 level" }), "3");
 
-        expect(steps()).toEqual(["Build Cannon | 5m"]);
+        expect(steps()).toEqual(["Build Cannon | 5m", "Upgrade Star Base to level 2 | 3d"]);
+      });
+
+      describe("Star Base", () => {
+        it("raises the Star Base by one level on Done", async () => {
+          const colonyStore = createMemoryColonyStore();
+          seed(colonyStore, 1, { observatory: [2], mine: [3, 2] });
+          render(
+            <App
+              store={createMemoryDropStore()}
+              auth={SIGNED_OUT_AUTH}
+              now={() => NOW}
+              colonyStore={colonyStore}
+              catalog={stepCatalog()}
+            />,
+          );
+
+          await click("Done Upgrade Star Base to level 2");
+
+          expect(starBaseSelect()).toHaveValue("2");
+          expect(colonyStore.get("main")).toMatchObject({
+            starBaseLevel: 2,
+            buildings: { observatory: [2], mine: [3, 2] },
+          });
+          expect(
+            screen.queryByRole("button", { name: "Done Upgrade Star Base to level 2" }),
+          ).toBeNull();
+        });
       });
 
       describe("Done", () => {
@@ -1059,7 +1111,7 @@ describe("App", () => {
           await click("Done Build Cannon");
 
           expect(levelsOf("Cannon")).toEqual(["1"]);
-          expect(screen.getByText("Nothing to build or upgrade")).toBeInTheDocument();
+          expect(steps()).toEqual(["Upgrade Star Base to level 2 | 3d"]);
         });
 
         it("raises that Building by one level for an upgrade step", async () => {
@@ -1073,7 +1125,7 @@ describe("App", () => {
               name: "Statuses",
             }),
           ).toHaveTextContent("Maxed");
-          expect(screen.getByText("Nothing to build or upgrade")).toBeInTheDocument();
+          expect(steps()).toEqual(["Upgrade Star Base to level 2 | 3d"]);
         });
 
         it("keeps the levels in descending order", async () => {
@@ -1084,7 +1136,10 @@ describe("App", () => {
           );
 
           expect(levelsOf("Mine")).toEqual(["3", "2"]);
-          expect(steps()).toEqual(["Upgrade Mine to level 3 | 50m"]);
+          expect(steps()).toEqual([
+            "Upgrade Mine to level 3 | 50m",
+            "Upgrade Star Base to level 2 | 3d",
+          ]);
         });
 
         it("saves the change to the Colony", async () => {
@@ -1120,7 +1175,11 @@ describe("App", () => {
         });
         afterEach(() => vi.useRealTimers());
 
-        function renderConstructions(seedBuildings: Record<string, number[]>, starBase = 1) {
+        function renderConstructions(
+          seedBuildings: Record<string, number[]>,
+          starBase = 1,
+          catalog = stepCatalog(),
+        ) {
           const colonyStore = createMemoryColonyStore();
           seed(colonyStore, starBase, seedBuildings);
           render(
@@ -1129,7 +1188,7 @@ describe("App", () => {
               auth={SIGNED_OUT_AUTH}
               now={() => time}
               colonyStore={colonyStore}
-              catalog={stepCatalog()}
+              catalog={catalog}
             />,
           );
           return colonyStore;
@@ -1149,7 +1208,7 @@ describe("App", () => {
             stepItems().map(
               (item) => within(item).queryByRole("button", { name: /^Start/ })?.textContent ?? null,
             ),
-          ).toEqual(["Start", "Start", "Start"]);
+          ).toEqual(["Start", "Start", "Start", "Start"]);
         });
 
         describe("a step whose time is unknown", () => {
@@ -1196,7 +1255,7 @@ describe("App", () => {
             await click("Back Start Upgrade Mine to level 2");
 
             expect(screen.queryByRole("textbox")).toBeNull();
-            expect(steps()[2]).toBe("Upgrade Mine to level 2 | time unknown");
+            expect(steps()[3]).toBe("Upgrade Mine to level 2 | time unknown");
             expect(colonyStore.get("main")?.constructions).toBeUndefined();
           });
         });
@@ -1284,7 +1343,11 @@ describe("App", () => {
 
           await click("Start Upgrade Mine to level 3");
 
-          expect(steps()).toEqual(["Upgrade Mine to level 3 | 00:50:00", "Build Cannon | 5m"]);
+          expect(steps()).toEqual([
+            "Upgrade Mine to level 3 | 00:50:00",
+            "Build Cannon | 5m",
+            "Upgrade Star Base to level 2 | 3d",
+          ]);
           expect(colonyStore.get("main")?.constructions).toEqual([
             {
               kind: "upgrade",
@@ -1338,8 +1401,35 @@ describe("App", () => {
           await click("Done Upgrade Mine to level 3");
 
           expect(levelsOf("Mine")).toEqual(["3", "3"]);
-          expect(steps()).toEqual(["Build Cannon | 5m"]);
+          expect(steps()).toEqual(["Build Cannon | 5m", "Upgrade Star Base to level 2 | 3d"]);
           expect(colonyStore.get("main")?.constructions ?? []).toEqual([]);
+        });
+
+        it("starts the Star Base upgrade as a Construction and raises the Star Base on Done", async () => {
+          const colonyStore = renderConstructions({ observatory: [2], mine: [3, 2] });
+
+          await click("Start Upgrade Star Base to level 2");
+
+          expect(steps()[0]).toMatch(/^Upgrade Star Base to level 2 \| /);
+          expect(colonyStore.get("main")?.constructions).toEqual([
+            {
+              kind: "upgrade",
+              typeId: "star-base",
+              instance: 1,
+              count: 1,
+              targetLevel: 2,
+              finishAt: NOW + 3 * 24 * 60 * MINUTE,
+            },
+          ]);
+          expect(starBaseSelect()).toHaveValue("1");
+
+          passTime(3 * 24 * 60 * MINUTE);
+          expect(steps()[0]).toBe("Upgrade Star Base to level 2 | Finished");
+          await click("Done Upgrade Star Base to level 2");
+
+          expect(starBaseSelect()).toHaveValue("2");
+          expect(colonyStore.get("main")?.constructions ?? []).toEqual([]);
+          expect(colonyStore.get("main")?.buildings).toEqual({ observatory: [2], mine: [3, 2] });
         });
 
         it("applies the step on Done after the Finish date", async () => {
@@ -1347,11 +1437,11 @@ describe("App", () => {
           await click("Start Build Cannon");
           passTime(10 * MINUTE);
 
-          expect(steps()).toEqual(["Build Cannon | Finished"]);
+          expect(steps()).toEqual(["Build Cannon | Finished", "Upgrade Star Base to level 2 | 3d"]);
           await click("Done Build Cannon");
 
           expect(levelsOf("Cannon")).toEqual(["1"]);
-          expect(screen.getByText("Nothing to build or upgrade")).toBeInTheDocument();
+          expect(steps()).toEqual(["Upgrade Star Base to level 2 | 3d"]);
           expect(colonyStore.get("main")?.constructions ?? []).toEqual([]);
         });
 
@@ -1376,7 +1466,11 @@ describe("App", () => {
           await click("Cancel Upgrade Mine to level 3");
           await click("Confirm cancel Upgrade Mine to level 3");
 
-          expect(steps()).toEqual(["Build Cannon | 5m", "Upgrade Mine to level 3 | 50m"]);
+          expect(steps()).toEqual([
+            "Build Cannon | 5m",
+            "Upgrade Mine to level 3 | 50m",
+            "Upgrade Star Base to level 2 | 3d",
+          ]);
           expect(colonyStore.get("main")).toEqual({
             starBaseLevel: 1,
             buildings: { observatory: [2], mine: [3, 2] },
@@ -1542,7 +1636,11 @@ describe("App", () => {
           });
 
           it("does not show when nothing is left to start", () => {
-            renderConstructions({ observatory: [2], mine: [3, 3], cannon: [1] });
+            renderConstructions(
+              { observatory: [2], mine: [3, 3], cannon: [1] },
+              1,
+              withTopStarBase(stepCatalog()),
+            );
 
             expect(hasDot("Main planet")).toBe(false);
             expect(hasDot("Colony 1")).toBe(true);
@@ -1568,13 +1666,13 @@ describe("App", () => {
             expect(hasDot("Main planet")).toBe(true);
           });
 
-          it("comes back when the Construction is Finished", async () => {
+          it("stays hidden while the Construction is Finished", async () => {
             renderConstructions({ observatory: [2], mine: [3, 2] });
             await click("Start Upgrade Mine to level 3");
 
             passTime(50 * MINUTE);
 
-            expect(hasDot("Main planet")).toBe(true);
+            expect(hasDot("Main planet")).toBe(false);
           });
 
           it("follows the Worker count", async () => {
@@ -1981,7 +2079,11 @@ describe("App", () => {
 
   describe("tab title", () => {
     const DEFAULT_TITLE = "GL Upgrade Planner";
-    const NOTHING_TO_BUILD: Catalog = { ...FIXTURE_CATALOG, buildings: [] };
+    const NOTHING_TO_BUILD: Catalog = {
+      ...FIXTURE_CATALOG,
+      starBase: [{ level: 1, time: null }],
+      buildings: [],
+    };
 
     function renderTitle(store: DropStore, now: () => number, colonyStore?: ColonyStore) {
       return render(
@@ -2090,7 +2192,7 @@ describe("App", () => {
       expect(document.title).toBe(`(4) ${DEFAULT_TITLE}`);
     });
 
-    it("gives the Worker back to the count once its Construction is Finished", () => {
+    it("counts a Finished Construction once, its Worker staying busy", () => {
       let time = NOW;
       const colonyStore = storeWithConstruction("main", NOW + 60 * 1000, 0);
       render(
@@ -2109,7 +2211,7 @@ describe("App", () => {
         vi.advanceTimersByTime(1000);
       });
 
-      expect(document.title).toBe(`(2) ${DEFAULT_TITLE}`);
+      expect(document.title).toBe(`(1) ${DEFAULT_TITLE}`);
     });
 
     it("restores the default title when the app unmounts", () => {
@@ -2697,6 +2799,70 @@ describe("App", () => {
 
       expect(chip("Star Battery").getByText("00:00:05")).toBeInTheDocument();
       expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
+    });
+  });
+
+  describe("account loading", () => {
+    function fakeLoading(initial: boolean) {
+      let loading = initial;
+      const listeners = new Set<() => void>();
+      return {
+        isLoading: () => loading,
+        subscribe(onChange: () => void) {
+          listeners.add(onChange);
+          return () => listeners.delete(onChange);
+        },
+        finish() {
+          loading = false;
+          listeners.forEach((onChange) => onChange());
+        },
+      };
+    }
+
+    function renderLoading(loading: ReturnType<typeof fakeLoading>) {
+      const colonyStore = createMemoryColonyStore();
+      colonyStore.set("main", { starBaseLevel: 3, buildings: {}, updatedAt: 1 });
+      render(
+        <App
+          store={createMemoryDropStore({ "gl-timer-star-battery": NOW - 1000 })}
+          auth={authServiceFrom({
+            status: "signed-in",
+            user: { uid: "1", displayName: null, email: null },
+          })}
+          now={() => NOW}
+          colonyStore={colonyStore}
+          catalog={FIXTURE_CATALOG}
+          loading={loading}
+        />,
+      );
+    }
+
+    beforeEach(() => {
+      document.title = "GL Upgrade Planner";
+    });
+
+    it("shows loading states instead of values that are about to change", () => {
+      renderLoading(fakeLoading(true));
+
+      expect(screen.getByRole("status", { name: "Loading your timers" })).toBeInTheDocument();
+      expect(screen.queryByRole("group", { name: "Star Battery timer" })).toBeNull();
+      expect(screen.getByRole("status", { name: "Loading your Planner" })).toBeInTheDocument();
+      expect(screen.queryByRole("combobox", { name: "Star Base level" })).toBeNull();
+      expect(screen.queryByRole("tab", { name: "Main planet" })).toBeNull();
+      expect(document.title).toBe("GL Upgrade Planner");
+    });
+
+    it("shows the account values once they are loaded", () => {
+      const loading = fakeLoading(true);
+      renderLoading(loading);
+
+      act(() => loading.finish());
+
+      expect(screen.queryByRole("status", { name: "Loading your Planner" })).toBeNull();
+      expect(screen.queryByRole("status", { name: "Loading your timers" })).toBeNull();
+      expect(screen.getByRole("combobox", { name: "Star Base level" })).toHaveValue("3");
+      expect(chip("Star Battery")).toBeTruthy();
+      expect(document.title).toBe("(2) GL Upgrade Planner");
     });
   });
 

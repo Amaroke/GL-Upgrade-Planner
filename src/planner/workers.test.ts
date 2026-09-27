@@ -40,11 +40,11 @@ function colony(changes: Partial<ColonyEntry> = {}): ColonyEntry {
 
 describe("idleWorkers", () => {
   it("counts one idle Worker by default when something is left to start", () => {
-    expect(idleWorkers(CATALOG, "colony-1", colony(), NOW, false)).toBe(1);
+    expect(idleWorkers(CATALOG, "colony-1", colony(), false)).toBe(1);
   });
 
   it("counts one idle Worker on a Colony never set", () => {
-    expect(idleWorkers(CATALOG, "colony-1", null, NOW, false)).toBe(1);
+    expect(idleWorkers(CATALOG, "colony-1", null, false)).toBe(1);
   });
 
   it("counts the Workers left free by running Constructions", () => {
@@ -53,12 +53,12 @@ describe("idleWorkers", () => {
       workers: 3,
       constructions: [upgradeMine(NOW + 1)],
     });
-    expect(idleWorkers(CATALOG, "colony-1", entry, NOW, false)).toBe(2);
+    expect(idleWorkers(CATALOG, "colony-1", entry, false)).toBe(2);
   });
 
   it("counts none when every Worker is busy", () => {
     const entry = colony({ constructions: [upgradeMine(NOW + 1)] });
-    expect(idleWorkers(CATALOG, "colony-1", entry, NOW, false)).toBe(0);
+    expect(idleWorkers(CATALOG, "colony-1", entry, false)).toBe(0);
   });
 
   it("counts none when every Worker is busy and more Constructions run than Workers", () => {
@@ -66,28 +66,28 @@ describe("idleWorkers", () => {
       buildings: { wall: [1, 1] },
       constructions: [upgradeMine(NOW + 1), upgradeMine(NOW + 1)],
     });
-    expect(idleWorkers(CATALOG, "colony-1", entry, NOW, false)).toBe(0);
+    expect(idleWorkers(CATALOG, "colony-1", entry, false)).toBe(0);
   });
 
-  it("frees the Worker of a Finished Construction and offers its step again", () => {
+  it("keeps the Worker of a Finished Construction busy until it is applied", () => {
     const entry = colony({ constructions: [upgradeMine(NOW)] });
-    expect(idleWorkers(CATALOG, "colony-1", entry, NOW, false)).toBe(1);
+    expect(idleWorkers(CATALOG, "colony-1", entry, false)).toBe(0);
   });
 
   it("counts none when nothing is left to start", () => {
     const entry = colony({ buildings: { mine: [2], wall: [3, 3] }, workers: 2 });
-    expect(idleWorkers(CATALOG, "colony-1", entry, NOW, false)).toBe(0);
+    expect(idleWorkers(CATALOG, "colony-1", entry, false)).toBe(0);
   });
 
   it("counts none when the only step left is started", () => {
     const entry = colony({ workers: 2, constructions: [upgradeMine(NOW + 1)] });
-    expect(idleWorkers(CATALOG, "colony-1", entry, NOW, false)).toBe(0);
+    expect(idleWorkers(CATALOG, "colony-1", entry, false)).toBe(0);
   });
 
   it("ignores wall upgrades when they are hidden", () => {
     const entry = colony({ buildings: { mine: [2], wall: [1, 1] } });
-    expect(idleWorkers(CATALOG, "colony-1", entry, NOW, false)).toBe(1);
-    expect(idleWorkers(CATALOG, "colony-1", entry, NOW, true)).toBe(0);
+    expect(idleWorkers(CATALOG, "colony-1", entry, false)).toBe(1);
+    expect(idleWorkers(CATALOG, "colony-1", entry, true)).toBe(0);
   });
 });
 
@@ -98,6 +98,6 @@ describe("totalIdleWorkers", () => {
     store.set("colony-1", colony({ workers: 3 }));
     store.set("colony-2", colony({ workers: 5 }));
 
-    expect(totalIdleWorkers(CATALOG, store, NOW, false)).toBe(5);
+    expect(totalIdleWorkers(CATALOG, store, false)).toBe(5);
   });
 });

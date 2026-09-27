@@ -10,7 +10,7 @@ import {
   withSharedLevel,
 } from "../planner/buildings";
 import { constructionStep, startConstruction, withRemaining } from "../planner/constructions";
-import type { NextStep } from "../planner/nextSteps";
+import { STAR_BASE_ID, type NextStep } from "../planner/nextSteps";
 import { colonyProgress } from "../planner/progress";
 import { DEFAULT_WORKERS, idleWorkers } from "../planner/workers";
 import { filterToUpgrade } from "../planner/statuses";
@@ -129,8 +129,15 @@ function ColonyPanel({
     return index === -1 ? levels : withLevel(levels, index, step.targetLevel);
   }
 
+  function applied(step: NextStep): { starBaseLevel: number } | { buildings: ColonyBuildings } {
+    if (step.typeId === STAR_BASE_ID) {
+      return { starBaseLevel: Math.max(starBaseLevel, step.targetLevel) };
+    }
+    return { buildings: { ...buildings, [step.typeId]: appliedLevels(step) } };
+  }
+
   function applyStep(step: NextStep) {
-    saveLevels(step.typeId, appliedLevels(step));
+    save(applied(step));
   }
 
   function startStep(step: NextStep, seconds: number) {
@@ -150,9 +157,8 @@ function ColonyPanel({
   }
 
   function applyConstruction(index: number) {
-    const step = constructionStep(catalog, constructions[index]);
     save({
-      buildings: { ...buildings, [step.typeId]: appliedLevels(step) },
+      ...applied(constructionStep(catalog, constructions[index])),
       constructions: withoutConstruction(index),
     });
   }
@@ -245,7 +251,6 @@ type ColonyTabProps = {
   colony: ColonyDefinition;
   store: ColonyStore;
   catalog: Catalog;
-  now: () => number;
   hideWallUpgrades: boolean;
   unlocked: boolean;
   selected: boolean;
@@ -256,15 +261,13 @@ function ColonyTab({
   colony,
   store,
   catalog,
-  now,
   hideWallUpgrades,
   unlocked,
   selected,
   onSelect,
 }: ColonyTabProps) {
   const entry = useColonyEntry(store, colony.id);
-  const hasFreeWorker =
-    unlocked && idleWorkers(catalog, colony.id, entry, now(), hideWallUpgrades) > 0;
+  const hasFreeWorker = unlocked && idleWorkers(catalog, colony.id, entry, hideWallUpgrades) > 0;
   const starBaseLevel = entry?.starBaseLevel ?? DEFAULT_STAR_BASE_LEVEL;
   const progress = colonyProgress(catalog, colony.id, entry?.buildings ?? NO_BUILDINGS);
   const overall = percent(progress.overall);
@@ -322,7 +325,34 @@ function ColonyTab({
   );
 }
 
-export function Planner({ store, settingsStore, catalog, now }: PlannerProps) {
+function PlannerSkeleton() {
+  return (
+    <div role="status" aria-label="Loading your Planner" className="animate-pulse">
+      <div className="mb-4 grid grid-cols-6 gap-1 sm:grid-cols-12">
+        {COLONIES.map((colony) => (
+          <div key={colony.id} className="h-14 rounded-lg bg-white/5" />
+        ))}
+      </div>
+      <div className="h-8 w-64 rounded bg-white/5" />
+      <div className="mt-6 flex flex-col gap-2">
+        {[0, 1, 2].map((row) => (
+          <div key={row} className="h-10 rounded-xl bg-white/5" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function Planner({ isLoading = false, ...props }: PlannerProps & { isLoading?: boolean }) {
+  return (
+    <section className="w-full flex-1 rounded-2xl border border-white/10 p-6">
+      <h2 className="mb-4 text-lg font-semibold text-white">Planner</h2>
+      {isLoading ? <PlannerSkeleton /> : <LoadedPlanner {...props} />}
+    </section>
+  );
+}
+
+function LoadedPlanner({ store, settingsStore, catalog, now }: PlannerProps) {
   const [activeId, setActiveId] = useState(MAIN_COLONY_ID);
   const [{ hideWallUpgrades }] = usePlannerOptions(settingsStore, now);
   const observatory = observatoryLevel(
@@ -333,9 +363,7 @@ export function Planner({ store, settingsStore, catalog, now }: PlannerProps) {
     COLONIES[0];
 
   return (
-    <section className="w-full flex-1 rounded-2xl border border-white/10 p-6">
-      <h2 className="mb-4 text-lg font-semibold text-white">Planner</h2>
-
+    <>
       <div
         role="tablist"
         aria-label="Colonies"
@@ -347,7 +375,6 @@ export function Planner({ store, settingsStore, catalog, now }: PlannerProps) {
             colony={colony}
             store={store}
             catalog={catalog}
-            now={now}
             hideWallUpgrades={hideWallUpgrades}
             unlocked={isColonyUnlocked(colony, observatory)}
             selected={colony.id === activeColony.id}
@@ -364,6 +391,6 @@ export function Planner({ store, settingsStore, catalog, now }: PlannerProps) {
         catalog={catalog}
         now={now}
       />
-    </section>
+    </>
   );
 }

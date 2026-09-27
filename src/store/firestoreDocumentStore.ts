@@ -27,6 +27,7 @@ export type FirestoreDocumentStore<T> = {
   get(key: string): T | null;
   set(key: string, entry: T): void;
   subscribe(key: string, onChange: () => void): () => void;
+  isLoaded(key: string): boolean;
   syncStatus: SyncStatusStore;
   dispose(): void;
 };
@@ -49,6 +50,7 @@ export function createFirestoreDocumentStore<T extends { updatedAt: number }>(
   const pending = new Map<string, T>();
   const listeners = new Map<string, Set<() => void>>();
   const unwatchers = new Map<string, () => void>();
+  const failed = new Set<string>();
   const refOf = (key: string) => doc(db, "users", uid, collection, key);
 
   const unregister = scheduler.register({
@@ -80,6 +82,8 @@ export function createFirestoreDocumentStore<T extends { updatedAt: number }>(
       },
       (error) => {
         if (!isTransientError(error)) scheduler.setReadFailed(true);
+        failed.add(key);
+        listeners.get(key)?.forEach((onChange) => onChange());
       },
     );
     unwatchers.set(key, unwatch);
@@ -108,6 +112,10 @@ export function createFirestoreDocumentStore<T extends { updatedAt: number }>(
         unwatchers.get(key)?.();
         unwatchers.delete(key);
       };
+    },
+    isLoaded(key) {
+      ensureWatched(key);
+      return cache.has(key) || failed.has(key);
     },
     syncStatus: scheduler.syncStatus,
     dispose() {

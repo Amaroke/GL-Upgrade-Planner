@@ -4,6 +4,7 @@ import {
   nextSteps,
   parseDuration,
   readDuration,
+  STAR_BASE_ID,
   withoutWallUpgrades,
   type NextStep,
 } from "./nextSteps";
@@ -262,6 +263,56 @@ describe("nextSteps", () => {
     const steps = nextSteps(short, "main", 1, { mine: [1] }, "fastest");
 
     expect(steps[0]).toMatchObject({ targetLevel: 2, time: null, seconds: null });
+  });
+
+  describe("Star Base", () => {
+    const WITH_STAR_BASE: Catalog = {
+      ...CATALOG,
+      starBase: [
+        { level: 1, time: null },
+        { level: 2, time: "10m" },
+        { level: 3, time: "4h" },
+      ],
+    };
+
+    it("recommends raising the Star Base by one level with its catalog time", () => {
+      const steps = nextSteps(WITH_STAR_BASE, "colony-1", 2, {}, "fastest");
+
+      expect(steps.find((step) => step.typeId === STAR_BASE_ID)).toMatchObject({
+        kind: "upgrade",
+        typeName: "Star Base",
+        instance: 1,
+        count: 1,
+        shared: false,
+        targetLevel: 3,
+        time: "4h",
+        seconds: 4 * 3600,
+      });
+    });
+
+    it("orders the Star Base step among the upgrades by its time", () => {
+      const steps = nextSteps(WITH_STAR_BASE, "colony-1", 1, { mine: [1, 1] }, "fastest");
+
+      expect(labels(steps)).toEqual([
+        "build:barracks:1:1",
+        "build:cannon:1:1",
+        "upgrade:star-base:1:2",
+        "upgrade:mine:1:2",
+        "upgrade:mine:2:2",
+      ]);
+    });
+
+    it("recommends nothing for the Star Base at its highest level", () => {
+      const steps = nextSteps(WITH_STAR_BASE, "colony-1", 3, {}, "fastest");
+
+      expect(steps.some((step) => step.typeId === STAR_BASE_ID)).toBe(false);
+    });
+
+    it("leaves the Star Base out of a single category", () => {
+      const steps = nextSteps(WITH_STAR_BASE, "colony-1", 1, {}, "fastest", "Resource");
+
+      expect(steps.some((step) => step.typeId === STAR_BASE_ID)).toBe(false);
+    });
   });
 });
 

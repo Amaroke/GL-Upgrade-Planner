@@ -5,6 +5,7 @@ import type { SendScheduler, SyncStatusStore } from "./sendScheduler";
 
 export type FirestoreDropStore = DropStore & {
   syncStatus: SyncStatusStore;
+  isLoaded(key: string): boolean;
   dispose(): void;
 };
 
