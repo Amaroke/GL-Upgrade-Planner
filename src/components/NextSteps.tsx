@@ -1,5 +1,6 @@
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { formatDuration as formatCountdown } from "../lib/dateFormat";
+import { useTick } from "../hooks/useTick";
 import { CATEGORIES, type Catalog, type Category } from "../planner/catalog";
 import { constructionStep, withoutStarted } from "../planner/constructions";
 import {
@@ -151,14 +152,6 @@ function StepRow({
       )}
     </li>
   );
-}
-
-function useTick() {
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setTick((tick) => tick + 1), 1000);
-    return () => clearInterval(id);
-  }, []);
 }
 
 function ConstructionRow({
