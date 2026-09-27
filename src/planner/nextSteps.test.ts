@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { BuildingType, Catalog, Category } from "./catalog";
-import { nextSteps, parseDuration, withoutWallUpgrades, type NextStep } from "./nextSteps";
+import {
+  nextSteps,
+  parseDuration,
+  readDuration,
+  withoutWallUpgrades,
+  type NextStep,
+} from "./nextSteps";
 
 function type(
   id: string,
@@ -91,6 +97,21 @@ describe("parseDuration", () => {
 
   it("returns null for an unknown time", () => {
     expect(parseDuration(null)).toBeNull();
+  });
+});
+
+describe("readDuration", () => {
+  it("reads a duration typed by the player, spaces and case aside", () => {
+    expect(readDuration(" 1H 30 m ")).toBe(5400);
+    expect(readDuration("2d")).toBe(172800);
+  });
+
+  it("accepts a zero duration", () => {
+    expect(readDuration("0s")).toBe(0);
+  });
+
+  it.each(["", "soon", "30", "1h soon", "m30"])("rejects %j", (text) => {
+    expect(readDuration(text)).toBeNull();
   });
 });
 

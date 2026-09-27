@@ -1,7 +1,7 @@
 import { useEffect, useReducer, useState } from "react";
-import type { DropStore } from "../store/dropStore";
+import type { Notice } from "./useReadyNotifications";
 
-export function useReadyDropTitle(store: DropStore, storageKeys: string[], now: () => number) {
+export function useReadyTitle(readNotices: () => Notice[], now: () => number) {
   const [, tick] = useReducer((t: number) => t + 1, 0);
   const [defaultTitle] = useState(() => document.title);
 
@@ -10,10 +10,9 @@ export function useReadyDropTitle(store: DropStore, storageKeys: string[], now: 
     return () => clearInterval(id);
   }, []);
 
-  const readyCount = storageKeys.filter((key) => {
-    const readyAt = store.get(key)?.readyAt ?? null;
-    return readyAt !== null && readyAt <= now();
-  }).length;
+  const readyCount = readNotices().filter(
+    (notice) => notice.readyAt !== null && notice.readyAt <= now(),
+  ).length;
 
   useEffect(() => {
     document.title = readyCount > 0 ? `(${readyCount}) ${defaultTitle}` : defaultTitle;

@@ -1,6 +1,8 @@
 import type { Catalog } from "./catalog";
-import type { NextStep } from "./nextSteps";
-import type { Construction } from "../store/colonyStore";
+import { COLONIES } from "./colonies";
+import { stepLabel, type NextStep } from "./nextSteps";
+import type { Notice } from "../hooks/useReadyNotifications";
+import type { ColonyStore, Construction } from "../store/colonyStore";
 
 export function startConstruction(step: NextStep, seconds: number, now: number): Construction {
   return {
@@ -29,6 +31,14 @@ export function constructionStep(catalog: Catalog, construction: Construction): 
   };
 }
 
+export function withRemaining(
+  construction: Construction,
+  seconds: number,
+  now: number,
+): Construction {
+  return { ...construction, finishAt: now + seconds * 1000 };
+}
+
 function matches(step: NextStep, construction: Construction): boolean {
   if (step.kind !== construction.kind || step.typeId !== construction.typeId) return false;
   return (
@@ -44,5 +54,23 @@ export function withoutStarted(steps: NextStep[], constructions: Construction[])
     if (index === -1) return true;
     pending.splice(index, 1);
     return false;
+  });
+}
+
+export function constructionNotices(catalog: Catalog, store: ColonyStore): Notice[] {
+  return COLONIES.flatMap((colony) => {
+    const seen = new Map<string, number>();
+    return (store.get(colony.id)?.constructions ?? []).map((construction) => {
+      const { kind, typeId, instance, targetLevel } = construction;
+      const identity = `${colony.id}-${kind}-${typeId}-${instance}-${targetLevel}`;
+      const occurrence = seen.get(identity) ?? 0;
+      seen.set(identity, occurrence + 1);
+      return {
+        key: `construction-${identity}-${occurrence}`,
+        readyAt: construction.finishAt,
+        title: `${stepLabel(constructionStep(catalog, construction))} is finished`,
+        body: `On ${colony.name}.`,
+      };
+    });
   });
 }

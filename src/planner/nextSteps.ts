@@ -35,6 +35,20 @@ export function parseDuration(time: string | null): number | null {
   return total;
 }
 
+export function readDuration(text: string): number | null {
+  const compact = text.replace(/\s+/g, "").toLowerCase();
+  if (!/^(\d+[wdhms])+$/.test(compact)) return null;
+  return parseDuration(compact);
+}
+
+export function stepLabel(step: NextStep): string {
+  if (step.kind === "build" && step.shared) return `Build ${step.count} ${step.typeName}`;
+  if (step.shared) return `Upgrade ${step.count} ${step.typeName} to level ${step.targetLevel}`;
+  return step.kind === "build"
+    ? `Build ${step.typeName}`
+    : `Upgrade ${step.typeName} to level ${step.targetLevel}`;
+}
+
 export function formatDuration(seconds: number): string {
   let rest = seconds;
   const parts = Object.entries(UNIT_SECONDS).flatMap(([unit, size]) => {

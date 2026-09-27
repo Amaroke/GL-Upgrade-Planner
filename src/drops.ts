@@ -1,6 +1,8 @@
 import helmetImg from "./assets/helmet.png";
 import starBatteryImg from "./assets/star-battery.png";
 import toolCaseImg from "./assets/tool-case.png";
+import type { Notice } from "./hooks/useReadyNotifications";
+import type { DropStore } from "./store/dropStore";
 
 export type DropDefinition = {
   storageKey: string;
@@ -33,3 +35,12 @@ export const DROPS: DropDefinition[] = [
     accent: "#c084fc",
   },
 ];
+
+export function dropNotices(store: DropStore): Notice[] {
+  return DROPS.map((drop) => ({
+    key: drop.storageKey,
+    readyAt: store.get(drop.storageKey)?.readyAt ?? null,
+    title: `${drop.name} is ready`,
+    body: `Your ${drop.name} can be collected.`,
+  }));
+}

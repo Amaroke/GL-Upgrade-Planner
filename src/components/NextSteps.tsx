@@ -1,9 +1,12 @@
 import { useEffect, useId, useState } from "react";
-import { formatDuration } from "../lib/dateFormat";
+import { formatDuration as formatCountdown } from "../lib/dateFormat";
 import { CATEGORIES, type Catalog, type Category } from "../planner/catalog";
 import { constructionStep, withoutStarted } from "../planner/constructions";
 import {
+  formatDuration,
   nextSteps,
+  readDuration,
+  stepLabel,
   withoutWallUpgrades,
   type NextStep,
   type StepOrder,
@@ -19,16 +22,81 @@ const ORDER_LABELS: Record<StepOrder, string> = {
 
 const ALL_CATEGORIES = "all";
 
-function stepLabel(step: NextStep): string {
-  if (step.kind === "build" && step.shared) return `Build ${step.count} ${step.typeName}`;
-  if (step.shared) return `Upgrade ${step.count} ${step.typeName} to level ${step.targetLevel}`;
-  return step.kind === "build"
-    ? `Build ${step.typeName}`
-    : `Upgrade ${step.typeName} to level ${step.targetLevel}`;
-}
-
 const ROW_BUTTON =
   "rounded-md border border-white/15 px-2 py-0.5 text-xs text-white/70 hover:bg-white/10";
+
+function DurationEditor({
+  action,
+  label,
+  inputLabel,
+  confirmText,
+  initial,
+  disabled = false,
+  onConfirm,
+  onBack,
+}: {
+  disabled?: boolean;
+  action: string;
+  label: string;
+  inputLabel: string;
+  confirmText: string;
+  initial: string;
+  onConfirm: (seconds: number) => void;
+  onBack: () => void;
+}) {
+  const [draft, setDraft] = useState(initial);
+  const [error, setError] = useState<string | null>(null);
+
+  function confirm() {
+    const seconds = readDuration(draft);
+    if (seconds === null) {
+      setError("Enter a duration like 1h 30m");
+      return;
+    }
+    onConfirm(seconds);
+  }
+
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      <input
+        type="text"
+        aria-label={inputLabel}
+        aria-invalid={error !== null}
+        value={draft}
+        placeholder="1h 30m"
+        autoFocus
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") confirm();
+          if (event.key === "Escape") onBack();
+        }}
+        className="w-24 rounded-md border border-white/15 bg-[#120c24] px-2 py-0.5 text-xs text-white"
+      />
+      <button
+        type="button"
+        aria-label={`Confirm ${action} ${label}`}
+        disabled={disabled}
+        onClick={confirm}
+        className={`${ROW_BUTTON} disabled:cursor-not-allowed disabled:opacity-40`}
+      >
+        {confirmText}
+      </button>
+      <button
+        type="button"
+        aria-label={`Back ${action} ${label}`}
+        onClick={onBack}
+        className={ROW_BUTTON}
+      >
+        Back
+      </button>
+      {error && (
+        <span role="alert" className="text-xs text-red-400">
+          {error}
+        </span>
+      )}
+    </span>
+  );
+}
 
 function StepRow({
   step,
@@ -41,31 +109,45 @@ function StepRow({
   onStart: (step: NextStep, seconds: number) => void;
   onDone: (step: NextStep) => void;
 }) {
+  const [isAskingDuration, setIsAskingDuration] = useState(false);
   const label = stepLabel(step);
   const { seconds } = step;
   return (
-    <li className="flex items-center gap-3 rounded-xl border border-white/10 px-3 py-2">
+    <li className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 px-3 py-2">
       <span className="text-sm text-[#e9e6f5]">{label}</span>
       <span className="ml-auto text-xs text-white/60">{step.time ?? "time unknown"}</span>
-      {seconds !== null && (
-        <button
-          type="button"
-          aria-label={`Start ${label}`}
+      {isAskingDuration ? (
+        <DurationEditor
+          action="Start"
+          label={label}
+          inputLabel={`Duration of ${label}`}
+          confirmText="Start"
+          initial=""
           disabled={!canStart}
-          onClick={() => onStart(step, seconds)}
-          className={`${ROW_BUTTON} disabled:cursor-not-allowed disabled:opacity-40`}
-        >
-          Start
-        </button>
+          onConfirm={(typed) => onStart(step, typed)}
+          onBack={() => setIsAskingDuration(false)}
+        />
+      ) : (
+        <>
+          <button
+            type="button"
+            aria-label={`Start ${label}`}
+            disabled={!canStart}
+            onClick={() => (seconds === null ? setIsAskingDuration(true) : onStart(step, seconds))}
+            className={`${ROW_BUTTON} disabled:cursor-not-allowed disabled:opacity-40`}
+          >
+            Start
+          </button>
+          <button
+            type="button"
+            aria-label={`Done ${label}`}
+            onClick={() => onDone(step)}
+            className={ROW_BUTTON}
+          >
+            Done
+          </button>
+        </>
       )}
-      <button
-        type="button"
-        aria-label={`Done ${label}`}
-        onClick={() => onDone(step)}
-        className={ROW_BUTTON}
-      >
-        Done
-      </button>
     </li>
   );
 }
@@ -84,23 +166,39 @@ function ConstructionRow({
   now,
   onDone,
   onCancel,
+  onEdit,
 }: {
   step: NextStep;
   finishAt: number;
   now: () => number;
   onDone: () => void;
   onCancel: () => void;
+  onEdit: (seconds: number) => void;
 }) {
   useTick();
-  const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
+  const [mode, setMode] = useState<"idle" | "confirmingCancel" | "editing">("idle");
   const label = stepLabel(step);
+  const remaining = Math.max(0, finishAt - now());
   return (
     <li className="flex flex-wrap items-center gap-3 rounded-xl border border-sky-400/40 bg-sky-400/5 px-3 py-2">
       <span className="text-sm text-[#e9e6f5]">{label}</span>
-      <span className="ml-auto text-xs tabular-nums text-sky-200">
-        {formatDuration(Math.max(0, finishAt - now()))}
+      <span
+        className={`ml-auto text-xs tabular-nums ${remaining === 0 ? "font-semibold text-green-300" : "text-sky-200"}`}
+      >
+        {remaining === 0 ? "Finished" : formatCountdown(remaining)}
       </span>
-      {isConfirmingCancel ? (
+      {mode === "editing" && (
+        <DurationEditor
+          action="Edit"
+          label={label}
+          inputLabel={`Remaining time of ${label}`}
+          confirmText="Save"
+          initial={formatDuration(Math.ceil(remaining / 1000))}
+          onConfirm={onEdit}
+          onBack={() => setMode("idle")}
+        />
+      )}
+      {mode === "confirmingCancel" && (
         <>
           <span className="text-xs text-white/70">Cancel this Construction?</span>
           <button
@@ -114,14 +212,23 @@ function ConstructionRow({
           <button
             type="button"
             aria-label={`Keep ${label}`}
-            onClick={() => setIsConfirmingCancel(false)}
+            onClick={() => setMode("idle")}
             className={ROW_BUTTON}
           >
             Keep
           </button>
         </>
-      ) : (
+      )}
+      {mode === "idle" && (
         <>
+          <button
+            type="button"
+            aria-label={`Edit ${label}`}
+            onClick={() => setMode("editing")}
+            className={ROW_BUTTON}
+          >
+            Edit
+          </button>
           <button
             type="button"
             aria-label={`Done ${label}`}
@@ -133,7 +240,7 @@ function ConstructionRow({
           <button
             type="button"
             aria-label={`Cancel ${label}`}
-            onClick={() => setIsConfirmingCancel(true)}
+            onClick={() => setMode("confirmingCancel")}
             className={ROW_BUTTON}
           >
             Cancel
@@ -158,6 +265,7 @@ type NextStepsProps = {
   onDone: (step: NextStep) => void;
   onDoneConstruction: (index: number) => void;
   onCancelConstruction: (index: number) => void;
+  onEditConstruction: (index: number, seconds: number) => void;
 };
 
 type Row =
@@ -178,6 +286,7 @@ export function NextSteps({
   onDone,
   onDoneConstruction,
   onCancelConstruction,
+  onEditConstruction,
 }: NextStepsProps) {
   const [order, setOrder] = useState<StepOrder>("fastest");
   const [category, setCategory] = useState<Category | null>(null);
@@ -260,6 +369,7 @@ export function NextSteps({
                 now={now}
                 onDone={() => onDoneConstruction(row.index)}
                 onCancel={() => onCancelConstruction(row.index)}
+                onEdit={(seconds) => onEditConstruction(row.index, seconds)}
               />
             ) : (
               <StepRow

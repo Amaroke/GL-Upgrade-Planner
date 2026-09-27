@@ -1,57 +1,58 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { DropStore } from "../store/dropStore";
 
-type NotifiableDrop = {
-  storageKey: string;
-  name: string;
+export type Notice = {
+  key: string;
+  readyAt: number | null;
+  title: string;
+  body: string;
 };
 
 export type NotificationPermissionState = NotificationPermission | "unsupported";
+
+type NoticeState = "idle" | "running" | "ready";
 
 function readPermission(): NotificationPermissionState {
   return typeof Notification === "undefined" ? "unsupported" : Notification.permission;
 }
 
-export function useReadyNotifications(
-  drops: NotifiableDrop[],
-  store: DropStore,
-  now: () => number,
-) {
-  const [permission, setPermission] = useState(readPermission);
-  const lastState = useRef<Map<string, "idle" | "running" | "ready">>(new Map());
+function noticeState(notice: Notice, now: number): NoticeState {
+  if (notice.readyAt === null) return "idle";
+  return notice.readyAt > now ? "running" : "ready";
+}
 
-  const readState = useCallback(
-    (storageKey: string) => {
-      const readyAt = store.get(storageKey)?.readyAt ?? null;
-      if (readyAt === null) return "idle";
-      return readyAt > now() ? "running" : "ready";
-    },
-    [store, now],
-  );
+function snapshot(notices: Notice[], now: number): Map<string, NoticeState> {
+  return new Map(notices.map((notice) => [notice.key, noticeState(notice, now)]));
+}
+
+export function useReadyNotifications(readNotices: () => Notice[], now: () => number) {
+  const [permission, setPermission] = useState(readPermission);
+  const latest = useRef({ readNotices, now });
 
   useEffect(() => {
-    for (const drop of drops) lastState.current.set(drop.storageKey, readState(drop.storageKey));
+    latest.current = { readNotices, now };
+  });
+
+  useEffect(() => {
+    let lastState = snapshot(latest.current.readNotices(), latest.current.now());
 
     const id = setInterval(() => {
-      for (const drop of drops) {
-        const state = readState(drop.storageKey);
+      const notices = latest.current.readNotices();
+      const state = snapshot(notices, latest.current.now());
+      for (const notice of notices) {
         const justBecameReady =
-          lastState.current.get(drop.storageKey) === "running" && state === "ready";
-        lastState.current.set(drop.storageKey, state);
+          lastState.get(notice.key) === "running" && state.get(notice.key) === "ready";
         if (justBecameReady && readPermission() === "granted") {
           try {
-            new Notification(`${drop.name} is ready`, {
-              body: `Your ${drop.name} can be collected.`,
-              tag: drop.storageKey,
-            });
+            new Notification(notice.title, { body: notice.body, tag: notice.key });
           } catch {
             continue;
           }
         }
       }
+      lastState = state;
     }, 1000);
     return () => clearInterval(id);
-  }, [drops, readState]);
+  }, []);
 
   const requestPermission = useCallback(async () => {
     if (typeof Notification === "undefined") return "unsupported" as const;
