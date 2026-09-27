@@ -12,6 +12,7 @@ import {
 import { constructionStep, startConstruction, withRemaining } from "../planner/constructions";
 import type { NextStep } from "../planner/nextSteps";
 import { colonyProgress } from "../planner/progress";
+import { DEFAULT_WORKERS, idleWorkers } from "../planner/workers";
 import { filterToUpgrade } from "../planner/statuses";
 import type { Catalog } from "../planner/catalog";
 import {
@@ -31,7 +32,7 @@ import {
 const DEFAULT_STAR_BASE_LEVEL = 1;
 const NO_BUILDINGS: ColonyBuildings = {};
 const NO_CONSTRUCTIONS: Construction[] = [];
-const MAX_CONSTRUCTIONS = 10;
+const WORKER_OPTIONS = [1, 2, 3, 4, 5];
 
 type PlannerOptions = Omit<PlannerSettings, "updatedAt">;
 
@@ -83,6 +84,8 @@ function ColonyPanel({
   const starBaseLevel = entry?.starBaseLevel ?? DEFAULT_STAR_BASE_LEVEL;
   const buildings = entry?.buildings ?? NO_BUILDINGS;
   const constructions = entry?.constructions ?? NO_CONSTRUCTIONS;
+  const workers = entry?.workers ?? DEFAULT_WORKERS;
+  const freeWorkers = workers - constructions.length;
   const [{ onlyToUpgrade, hideWallUpgrades }, updateOptions] = usePlannerOptions(
     settingsStore,
     now,
@@ -90,17 +93,20 @@ function ColonyPanel({
   const allGroups = groupedBuildingsForColony(catalog, colony.id);
   const groups = onlyToUpgrade ? filterToUpgrade(allGroups, starBaseLevel, buildings) : allGroups;
   const selectId = `star-base-level-${colony.id}`;
+  const workersId = `workers-${colony.id}`;
 
   function save(changes: {
     starBaseLevel?: number;
     buildings?: ColonyBuildings;
     constructions?: Construction[];
+    workers?: number;
   }) {
-    const next = { starBaseLevel, buildings, constructions, ...changes };
+    const next = { starBaseLevel, buildings, constructions, workers, ...changes };
     store.set(colony.id, {
       starBaseLevel: next.starBaseLevel,
       buildings: next.buildings,
       ...(next.constructions.length > 0 ? { constructions: next.constructions } : {}),
+      ...(next.workers === DEFAULT_WORKERS ? {} : { workers: next.workers }),
       updatedAt: now(),
     });
   }
@@ -169,6 +175,31 @@ function ColonyPanel({
             </option>
           ))}
         </select>
+        <div className="flex items-center gap-2">
+          <label htmlFor={workersId} className="text-sm text-white/60">
+            Workers
+          </label>
+          <select
+            id={workersId}
+            value={workers}
+            onChange={(event) => save({ workers: Number(event.target.value) })}
+            className="select"
+          >
+            {WORKER_OPTIONS.map((count) => (
+              <option key={count} value={count}>
+                {count}
+              </option>
+            ))}
+          </select>
+          <span role="status" aria-label="Workers status">
+            {freeWorkers < 0 && (
+              <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs text-red-300">
+                Over limit
+              </span>
+            )}
+            {freeWorkers === 0 && <span className="text-xs text-white/60">No free Worker</span>}
+          </span>
+        </div>
         <label className="ml-auto flex items-center gap-2 text-sm text-white/60">
           <input
             type="checkbox"
@@ -185,7 +216,7 @@ function ColonyPanel({
         starBaseLevel={starBaseLevel}
         buildings={buildings}
         constructions={constructions}
-        canStart={constructions.length < MAX_CONSTRUCTIONS}
+        canStart={freeWorkers > 0}
         now={now}
         hideWallUpgrades={hideWallUpgrades}
         onHideWallUpgradesChange={(value) => updateOptions({ hideWallUpgrades: value })}
@@ -214,13 +245,26 @@ type ColonyTabProps = {
   colony: ColonyDefinition;
   store: ColonyStore;
   catalog: Catalog;
+  now: () => number;
+  hideWallUpgrades: boolean;
   unlocked: boolean;
   selected: boolean;
   onSelect: () => void;
 };
 
-function ColonyTab({ colony, store, catalog, unlocked, selected, onSelect }: ColonyTabProps) {
+function ColonyTab({
+  colony,
+  store,
+  catalog,
+  now,
+  hideWallUpgrades,
+  unlocked,
+  selected,
+  onSelect,
+}: ColonyTabProps) {
   const entry = useColonyEntry(store, colony.id);
+  const hasFreeWorker =
+    unlocked && idleWorkers(catalog, colony.id, entry, now(), hideWallUpgrades) > 0;
   const starBaseLevel = entry?.starBaseLevel ?? DEFAULT_STAR_BASE_LEVEL;
   const progress = colonyProgress(catalog, colony.id, entry?.buildings ?? NO_BUILDINGS);
   const overall = percent(progress.overall);
@@ -247,6 +291,13 @@ function ColonyTab({ colony, store, catalog, unlocked, selected, onSelect }: Col
       >
         {colony.shortName}
       </button>
+      {hasFreeWorker && (
+        <span
+          role="img"
+          aria-label={`${colony.name} has a free Worker`}
+          className="pointer-events-none absolute top-1 right-1 h-2 w-2 rounded-full bg-amber-400"
+        />
+      )}
       <div
         role="group"
         aria-label={`${colony.name} progress`}
@@ -273,6 +324,7 @@ function ColonyTab({ colony, store, catalog, unlocked, selected, onSelect }: Col
 
 export function Planner({ store, settingsStore, catalog, now }: PlannerProps) {
   const [activeId, setActiveId] = useState(MAIN_COLONY_ID);
+  const [{ hideWallUpgrades }] = usePlannerOptions(settingsStore, now);
   const observatory = observatoryLevel(
     useColonyEntry(store, MAIN_COLONY_ID)?.buildings ?? NO_BUILDINGS,
   );
@@ -295,6 +347,8 @@ export function Planner({ store, settingsStore, catalog, now }: PlannerProps) {
             colony={colony}
             store={store}
             catalog={catalog}
+            now={now}
+            hideWallUpgrades={hideWallUpgrades}
             unlocked={isColonyUnlocked(colony, observatory)}
             selected={colony.id === activeColony.id}
             onSelect={() => setActiveId(colony.id)}

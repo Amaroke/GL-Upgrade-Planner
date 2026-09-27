@@ -13,6 +13,7 @@ import {
   createLocalStorageDropStore,
   createMemoryDropStore,
   OLDEST_UPDATED_AT,
+  type DropStore,
 } from "../store/dropStore";
 import {
   createLocalStorageColonyStore,
@@ -1406,67 +1407,184 @@ describe("App", () => {
           expect(colonyStore.get("main")?.constructions ?? []).toEqual([]);
         });
 
-        it("disables Start once ten Constructions are running", () => {
-          const colonyStore = createMemoryColonyStore();
-          colonyStore.set("main", {
-            starBaseLevel: 1,
-            buildings: { observatory: [2], mine: [3, 3] },
-            constructions: Array.from({ length: 10 }, () => ({
-              kind: "upgrade" as const,
-              typeId: "observatory",
-              instance: 1,
-              count: 1,
-              targetLevel: 3,
-              finishAt: NOW + MINUTE,
-            })),
-            updatedAt: 1,
-          });
-          render(
-            <App
-              store={createMemoryDropStore()}
-              auth={SIGNED_OUT_AUTH}
-              now={() => time}
-              colonyStore={colonyStore}
-              catalog={stepCatalog()}
-            />,
-          );
-          act(() => screen.getByRole("button", { name: "Show all 11 steps" }).click());
+        describe("Workers", () => {
+          function workersSelect() {
+            return screen.getByRole("combobox", { name: "Workers" });
+          }
 
-          expect(screen.getByRole("button", { name: "Start Build Cannon" })).toBeDisabled();
+          function workersStatus() {
+            return screen.getByRole("status", { name: "Workers status" });
+          }
+
+          it("shows one Worker by default, editable from 1 to 5 like the Star Base level", async () => {
+            const colonyStore = renderConstructions({ observatory: [2], mine: [3, 2] });
+
+            expect(workersSelect()).toHaveValue("1");
+            expect(
+              within(workersSelect())
+                .getAllByRole("option")
+                .map((option) => option.textContent),
+            ).toEqual(["1", "2", "3", "4", "5"]);
+
+            await userEvent.selectOptions(workersSelect(), "3");
+
+            expect(colonyStore.get("main")).toEqual({
+              starBaseLevel: 1,
+              buildings: { observatory: [2], mine: [3, 2] },
+              workers: 3,
+              updatedAt: NOW,
+            });
+          });
+
+          it("keeps a Worker count per Colony", async () => {
+            const colonyStore = renderConstructions({ observatory: [1] });
+
+            await userEvent.selectOptions(workersSelect(), "4");
+            await userEvent.click(screen.getByRole("tab", { name: "Colony 1" }));
+
+            expect(workersSelect()).toHaveValue("1");
+            expect(colonyStore.get("main")?.workers).toBe(4);
+          });
+
+          it("disables Start with No free Worker when every Worker is busy, Finished included", async () => {
+            renderConstructions({ observatory: [2], mine: [3, 2] });
+            await click("Start Upgrade Mine to level 3");
+            passTime(60 * MINUTE);
+
+            expect(steps()[0]).toBe("Upgrade Mine to level 3 | Finished");
+            expect(screen.getByRole("button", { name: "Start Build Cannon" })).toBeDisabled();
+            expect(workersStatus()).toHaveTextContent("No free Worker");
+          });
+
+          it("offers Start again once another Worker is added", async () => {
+            renderConstructions({ observatory: [2], mine: [3, 2] });
+            await click("Start Upgrade Mine to level 3");
+
+            await userEvent.selectOptions(workersSelect(), "2");
+
+            expect(screen.getByRole("button", { name: "Start Build Cannon" })).toBeEnabled();
+            expect(workersStatus()).toBeEmptyDOMElement();
+          });
+
+          it("frees the Worker when a Construction is applied", async () => {
+            renderConstructions({ observatory: [2], mine: [3, 2] }, 2);
+            await click("Start Upgrade Mine to level 3");
+
+            await click("Done Upgrade Mine to level 3");
+
+            expect(screen.getAllByRole("button", { name: /^Start/ })[0]).toBeEnabled();
+          });
+
+          it("frees the Worker when a Construction is cancelled", async () => {
+            renderConstructions({ observatory: [2], mine: [3, 2] });
+            await click("Start Upgrade Mine to level 3");
+
+            await click("Cancel Upgrade Mine to level 3");
+            await click("Confirm cancel Upgrade Mine to level 3");
+
+            expect(screen.getByRole("button", { name: "Start Build Cannon" })).toBeEnabled();
+          });
+
+          it("disables the duration Start once the last Worker is taken", async () => {
+            renderConstructions({ observatory: [1], mine: [3, 1] });
+            await click("Start Upgrade Mine to level 2");
+
+            await click("Start Build Cannon");
+
+            expect(
+              screen.getByRole("button", { name: "Confirm Start Upgrade Mine to level 2" }),
+            ).toBeDisabled();
+          });
+
+          it("keeps the Constructions and flags Over limit when the count drops below them", async () => {
+            const colonyStore = renderConstructions({ observatory: [2], mine: [3, 3] }, 2);
+            await userEvent.selectOptions(workersSelect(), "2");
+            await userEvent.click(screen.getAllByRole("button", { name: "Start Build Cannon" })[0]);
+            await userEvent.click(screen.getAllByRole("button", { name: "Start Build Cannon" })[0]);
+
+            await userEvent.selectOptions(workersSelect(), "1");
+
+            expect(workersStatus()).toHaveTextContent("Over limit");
+            expect(steps().slice(0, 2)).toEqual([
+              "Build Cannon | 00:05:00",
+              "Build Cannon | 00:05:00",
+            ]);
+            expect(colonyStore.get("main")?.constructions).toHaveLength(2);
+            expect(screen.getByRole("button", { name: "Start Build Mine" })).toBeDisabled();
+          });
+
+          it("clears Over limit once enough Constructions are applied", async () => {
+            renderConstructions({ observatory: [2], mine: [3, 3] }, 2);
+            await userEvent.selectOptions(workersSelect(), "2");
+            await userEvent.click(screen.getAllByRole("button", { name: "Start Build Cannon" })[0]);
+            await userEvent.click(screen.getAllByRole("button", { name: "Start Build Cannon" })[0]);
+            await userEvent.selectOptions(workersSelect(), "1");
+
+            await userEvent.click(screen.getAllByRole("button", { name: "Done Build Cannon" })[0]);
+
+            expect(workersStatus()).toHaveTextContent(/^No free Worker$/);
+          });
         });
 
-        it("disables the duration Start once the last free place is taken", async () => {
-          const colonyStore = createMemoryColonyStore();
-          colonyStore.set("main", {
-            starBaseLevel: 1,
-            buildings: { observatory: [1], mine: [3, 1] },
-            constructions: Array.from({ length: 9 }, () => ({
-              kind: "upgrade" as const,
-              typeId: "observatory",
-              instance: 1,
-              count: 1,
-              targetLevel: 2,
-              finishAt: NOW + MINUTE,
-            })),
-            updatedAt: 1,
+        describe("free Worker dot", () => {
+          function hasDot(colonyName: string) {
+            return screen.queryByRole("img", { name: `${colonyName} has a free Worker` }) !== null;
+          }
+
+          function dots() {
+            return ["Main planet", "Colony 1", "Colony 2", "Colony 3"].map(hasDot);
+          }
+
+          it("shows on each unlocked Colony with a free Worker and a step to start", () => {
+            renderConstructions({ observatory: [2], mine: [3, 2] });
+
+            expect(dots()).toEqual([true, true, true, false]);
           });
-          render(
-            <App
-              store={createMemoryDropStore()}
-              auth={SIGNED_OUT_AUTH}
-              now={() => time}
-              colonyStore={colonyStore}
-              catalog={stepCatalog()}
-            />,
-          );
-          await click("Show all 11 steps");
-          await click("Start Upgrade Mine to level 2");
 
-          await click("Start Build Cannon");
+          it("does not show when nothing is left to start", () => {
+            renderConstructions({ observatory: [2], mine: [3, 3], cannon: [1] });
 
-          expect(
-            screen.getByRole("button", { name: "Confirm Start Upgrade Mine to level 2" }),
-          ).toBeDisabled();
+            expect(hasDot("Main planet")).toBe(false);
+            expect(hasDot("Colony 1")).toBe(true);
+          });
+
+          it("goes away when a Construction takes the last Worker and comes back on cancel", async () => {
+            renderConstructions({ observatory: [2], mine: [3, 2] });
+
+            await click("Start Upgrade Mine to level 3");
+            expect(hasDot("Main planet")).toBe(false);
+
+            await click("Cancel Upgrade Mine to level 3");
+            await click("Confirm cancel Upgrade Mine to level 3");
+            expect(hasDot("Main planet")).toBe(true);
+          });
+
+          it("comes back when the Construction is applied", async () => {
+            renderConstructions({ observatory: [2], mine: [3, 2] });
+            await click("Start Upgrade Mine to level 3");
+
+            await click("Done Upgrade Mine to level 3");
+
+            expect(hasDot("Main planet")).toBe(true);
+          });
+
+          it("comes back when the Construction is Finished", async () => {
+            renderConstructions({ observatory: [2], mine: [3, 2] });
+            await click("Start Upgrade Mine to level 3");
+
+            passTime(50 * MINUTE);
+
+            expect(hasDot("Main planet")).toBe(true);
+          });
+
+          it("follows the Worker count", async () => {
+            renderConstructions({ observatory: [2], mine: [3, 2] });
+            await click("Start Upgrade Mine to level 3");
+
+            await userEvent.selectOptions(screen.getByRole("combobox", { name: "Workers" }), "2");
+
+            expect(hasDot("Main planet")).toBe(true);
+          });
         });
 
         it("keeps Constructions after a reload", async () => {
@@ -1863,6 +1981,19 @@ describe("App", () => {
 
   describe("tab title", () => {
     const DEFAULT_TITLE = "GL Upgrade Planner";
+    const NOTHING_TO_BUILD: Catalog = { ...FIXTURE_CATALOG, buildings: [] };
+
+    function renderTitle(store: DropStore, now: () => number, colonyStore?: ColonyStore) {
+      return render(
+        <App
+          store={store}
+          auth={SIGNED_OUT_AUTH}
+          now={now}
+          colonyStore={colonyStore}
+          catalog={NOTHING_TO_BUILD}
+        />,
+      );
+    }
 
     beforeEach(() => {
       document.title = DEFAULT_TITLE;
@@ -1877,14 +2008,14 @@ describe("App", () => {
         "gl-timer-helmet": NOW + 3600 * 1000,
       });
 
-      render(<App store={store} auth={SIGNED_OUT_AUTH} now={() => NOW} />);
+      renderTitle(store, () => NOW);
 
       expect(document.title).toBe(`(2) ${DEFAULT_TITLE}`);
     });
 
     it("updates when a Drop becomes Ready", () => {
       let time = NOW;
-      render(<App store={createMemoryDropStore()} auth={SIGNED_OUT_AUTH} now={() => time} />);
+      renderTitle(createMemoryDropStore(), () => time);
       act(() => screen.getByRole("button", { name: "Start Star Battery timer" }).click());
       expect(document.title).toBe(DEFAULT_TITLE);
 
@@ -1899,14 +2030,14 @@ describe("App", () => {
     it("keeps the default title when no Drop is Ready", () => {
       const store = createMemoryDropStore({ "gl-timer-star-battery": NOW + 3600 * 1000 });
 
-      render(<App store={store} auth={SIGNED_OUT_AUTH} now={() => NOW} />);
+      renderTitle(store, () => NOW);
 
       expect(document.title).toBe(DEFAULT_TITLE);
     });
 
     it("returns to the default title once the Ready Drop is reset", () => {
       const store = createMemoryDropStore({ "gl-timer-star-battery": NOW - 1000 });
-      render(<App store={store} auth={SIGNED_OUT_AUTH} now={() => NOW} />);
+      renderTitle(store, () => NOW);
       expect(document.title).toBe(`(1) ${DEFAULT_TITLE}`);
 
       act(() => screen.getByRole("button", { name: "Advanced settings for Star Battery" }).click());
@@ -1925,16 +2056,53 @@ describe("App", () => {
       let time = NOW;
       const store = createMemoryDropStore({ "gl-timer-star-battery": NOW - 1000 });
       const colonyStore = storeWithConstruction("colony-1", NOW + 60 * 1000, 0);
+      renderTitle(store, () => time, colonyStore);
+      expect(document.title).toBe(`(1) ${DEFAULT_TITLE}`);
+
+      time = NOW + 60 * 1000;
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+
+      expect(document.title).toBe(`(2) ${DEFAULT_TITLE}`);
+    });
+
+    it("adds the free Workers of unlocked Colonies with a step to start", () => {
+      const store = createMemoryDropStore({ "gl-timer-star-battery": NOW - 1000 });
+      const colonyStore = createMemoryColonyStore();
+      colonyStore.set("main", {
+        starBaseLevel: 1,
+        buildings: { observatory: [1] },
+        workers: 2,
+        updatedAt: 1,
+      });
+      colonyStore.set("colony-2", { starBaseLevel: 1, buildings: {}, workers: 5, updatedAt: 1 });
       render(
         <App
           store={store}
+          auth={SIGNED_OUT_AUTH}
+          now={() => NOW}
+          colonyStore={colonyStore}
+          catalog={FIXTURE_CATALOG}
+        />,
+      );
+
+      expect(document.title).toBe(`(4) ${DEFAULT_TITLE}`);
+    });
+
+    it("gives the Worker back to the count once its Construction is Finished", () => {
+      let time = NOW;
+      const colonyStore = storeWithConstruction("main", NOW + 60 * 1000, 0);
+      render(
+        <App
+          store={createMemoryDropStore()}
           auth={SIGNED_OUT_AUTH}
           now={() => time}
           colonyStore={colonyStore}
           catalog={FIXTURE_CATALOG}
         />,
       );
-      expect(document.title).toBe(`(1) ${DEFAULT_TITLE}`);
+      expect(document.title).toBe(DEFAULT_TITLE);
 
       time = NOW + 60 * 1000;
       act(() => {
@@ -1946,7 +2114,7 @@ describe("App", () => {
 
     it("restores the default title when the app unmounts", () => {
       const store = createMemoryDropStore({ "gl-timer-star-battery": NOW - 1000 });
-      const { unmount } = render(<App store={store} auth={SIGNED_OUT_AUTH} now={() => NOW} />);
+      const { unmount } = renderTitle(store, () => NOW);
 
       unmount();
 

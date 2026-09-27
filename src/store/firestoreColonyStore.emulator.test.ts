@@ -123,7 +123,7 @@ describe("createFirestoreColonyStore", () => {
     expect(readerStore.get("main")).toEqual(ENTRY);
   });
 
-  it("stores each Construction as one line and reads it back", async () => {
+  it("stores each Construction as one line with the Worker count and reads them back", async () => {
     const db = firestoreOf(testEnv.authenticatedContext("player-1"));
     const writer = createStore(db);
     const entry: ColonyEntry = {
@@ -138,6 +138,7 @@ describe("createFirestoreColonyStore", () => {
           finishAt: 1790000000000,
         },
       ],
+      workers: 2,
       updatedAt: 700,
     };
 
@@ -153,6 +154,7 @@ describe("createFirestoreColonyStore", () => {
 
     const snapshot = await getDoc(doc(db, "users/player-1/colonies/main"));
     expect(snapshot.data()?.constructions).toEqual(["upgrade gold-mine 2 1 3 1790000000000"]);
+    expect(snapshot.data()?.workers).toBe(2);
     const reader = createStore(firestoreOf(testEnv.authenticatedContext("player-1")));
     reader.get("main");
     await waitFor(reader, "main", 700);

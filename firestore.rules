@@ -65,7 +65,7 @@ service cloud.firestore {
     }
 
     function isValidColony() {
-      return request.resource.data.keys().hasOnly(['starBase', 'buildings', 'constructions', 'updatedAt'])
+      return request.resource.data.keys().hasOnly(['starBase', 'buildings', 'constructions', 'workers', 'updatedAt'])
         && request.resource.data.keys().hasAll(['starBase', 'buildings', 'updatedAt'])
         && request.resource.data.starBase is int
         && request.resource.data.starBase >= 1
@@ -74,7 +74,11 @@ service cloud.firestore {
         && isValidTimestamp(request.resource.data.updatedAt)
         && isValidBuildings(request.resource.data.buildings.values())
         && (!('constructions' in request.resource.data)
-          || isValidConstructions(request.resource.data.constructions));
+          || isValidConstructions(request.resource.data.constructions))
+        && (!('workers' in request.resource.data)
+          || (request.resource.data.workers is int
+            && request.resource.data.workers >= 1
+            && request.resource.data.workers <= 10));
     }
 
     function isValidSettings() {

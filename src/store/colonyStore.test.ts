@@ -42,6 +42,12 @@ function behavesLikeAColonyStore(name: string, create: () => ColonyStore) {
       expect(store.get("main")?.constructions).toEqual(constructions);
     });
 
+    it("records the Worker count of a Colony", () => {
+      const store = create();
+      store.set("main", { ...entry(4, 500), workers: 3 });
+      expect(store.get("main")?.workers).toBe(3);
+    });
+
     it("keeps each Colony separate", () => {
       const store = create();
       store.set("main", entry(4, 500));
@@ -122,6 +128,9 @@ describe("createLocalStorageColonyStore", () => {
     '{"starBaseLevel":2,"updatedAt":1,"buildings":{"mine":"x"}}',
     '{"starBaseLevel":2,"updatedAt":1,"buildings":{"mine":["x"]}}',
     '{"starBaseLevel":2,"updatedAt":1,"constructions":{}}',
+    '{"starBaseLevel":2,"updatedAt":1,"workers":"3"}',
+    '{"starBaseLevel":2,"updatedAt":1,"workers":0}',
+    '{"starBaseLevel":2,"updatedAt":1,"workers":2.5}',
     '{"starBaseLevel":2,"updatedAt":1,"constructions":[{"kind":"repair","typeId":"mine","instance":1,"count":1,"targetLevel":2,"finishAt":5}]}',
     '{"starBaseLevel":2,"updatedAt":1,"constructions":[{"kind":"build","typeId":3,"instance":1,"count":1,"targetLevel":2,"finishAt":5}]}',
     '{"starBaseLevel":2,"updatedAt":1,"constructions":[{"kind":"build","typeId":"mine","instance":1,"count":1,"targetLevel":2}]}',
