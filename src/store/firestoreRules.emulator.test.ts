@@ -244,6 +244,23 @@ describe("Firestore security rules for Colonies", () => {
     });
   });
 
+  describe("Workers", () => {
+    it("accepts a Worker count within the wide bounds", async () => {
+      const ref = doc(firestoreOf(testEnv.authenticatedContext("player-1")), COLONY_PATH);
+
+      await assertSucceeds(setDoc(ref, { ...VALID_COLONY, workers: 1 }));
+      await assertSucceeds(setDoc(ref, { ...VALID_COLONY, workers: 10 }));
+    });
+
+    it("rejects a malformed Worker count", async () => {
+      const ref = doc(firestoreOf(testEnv.authenticatedContext("player-1")), COLONY_PATH);
+
+      for (const workers of [0, 11, 2.5, "2", null, [2]]) {
+        await assertFails(setDoc(ref, { ...VALID_COLONY, workers }));
+      }
+    });
+  });
+
   it("lets an owner delete their own Colony document", async () => {
     const ref = doc(firestoreOf(testEnv.authenticatedContext("player-1")), COLONY_PATH);
     await assertSucceeds(setDoc(ref, VALID_COLONY));

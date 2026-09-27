@@ -133,6 +133,7 @@ function StepRow({
             type="button"
             aria-label={`Start ${label}`}
             disabled={!canStart}
+            title={canStart ? undefined : "No free Worker"}
             onClick={() => (seconds === null ? setIsAskingDuration(true) : onStart(step, seconds))}
             className={`${ROW_BUTTON} disabled:cursor-not-allowed disabled:opacity-40`}
           >

@@ -13,9 +13,14 @@ import { useReadyTitle } from "../hooks/useReadyTitle";
 import { useReadyNotifications } from "../hooks/useReadyNotifications";
 import { CATALOG, type Catalog } from "../planner/catalog";
 import { constructionNotices } from "../planner/constructions";
+import { totalIdleWorkers } from "../planner/workers";
 import { createMemoryColonyStore, type ColonyStore } from "../store/colonyStore";
 import type { DropStore } from "../store/dropStore";
-import { createMemorySettingsStore, type SettingsStore } from "../store/settingsStore";
+import {
+  createMemorySettingsStore,
+  PLANNER_SETTINGS_KEY,
+  type SettingsStore,
+} from "../store/settingsStore";
 
 type AppProps = {
   store: DropStore;
@@ -62,11 +67,22 @@ function App({ store, auth, now, colonyStore, settingsStore, catalog = CATALOG }
   const [fallbackColonyStore] = useState(createMemoryColonyStore);
   const [fallbackSettingsStore] = useState(createMemorySettingsStore);
   const colonies = colonyStore ?? fallbackColonyStore;
+  const settings = settingsStore ?? fallbackSettingsStore;
   const readNotices = useCallback(
     () => [...dropNotices(store), ...constructionNotices(catalog, colonies)],
     [store, catalog, colonies],
   );
-  useReadyTitle(readNotices, now);
+  const readIdleWorkers = useCallback(
+    () =>
+      totalIdleWorkers(
+        catalog,
+        colonies,
+        now(),
+        settings.get(PLANNER_SETTINGS_KEY)?.hideWallUpgrades ?? false,
+      ),
+    [catalog, colonies, settings, now],
+  );
+  useReadyTitle(readNotices, now, readIdleWorkers);
   const { permission, requestPermission } = useReadyNotifications(readNotices, now);
   const timers = useDropsTimers(DROPS, store, now);
   const [advancedDropKey, setAdvancedDropKey] = useState<string | null>(null);
@@ -87,12 +103,7 @@ function App({ store, auth, now, colonyStore, settingsStore, catalog = CATALOG }
           </div>
         </div>
 
-        <Planner
-          store={colonies}
-          settingsStore={settingsStore ?? fallbackSettingsStore}
-          catalog={catalog}
-          now={now}
-        />
+        <Planner store={colonies} settingsStore={settings} catalog={catalog} now={now} />
       </main>
 
       {advancedDrop && (

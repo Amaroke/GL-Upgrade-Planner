@@ -19,6 +19,7 @@ export type ColonyEntry = {
   starBaseLevel: number;
   buildings: ColonyBuildings;
   constructions?: Construction[];
+  workers?: number;
   updatedAt: number;
 };
 
@@ -47,6 +48,10 @@ function isConstruction(value: unknown): value is Construction {
   );
 }
 
+function isWorkerCount(value: unknown): value is number {
+  return Number.isInteger(value) && (value as number) >= 1;
+}
+
 function sortedDescending(buildings: ColonyBuildings): ColonyBuildings {
   return Object.fromEntries(
     Object.entries(buildings).map(([id, levels]) => [id, [...levels].sort((a, b) => b - a)]),
@@ -59,11 +64,18 @@ export function toColonyEntry(value: unknown): ColonyEntry | null {
     starBaseLevel,
     buildings = {},
     constructions,
+    workers,
     updatedAt,
   } = value as Record<string, unknown>;
   if (!isFiniteNumber(starBaseLevel) || !isFiniteNumber(updatedAt)) return null;
   if (!isColonyBuildings(buildings)) return null;
-  const entry: ColonyEntry = { starBaseLevel, buildings: sortedDescending(buildings), updatedAt };
+  if (workers !== undefined && !isWorkerCount(workers)) return null;
+  const entry: ColonyEntry = {
+    starBaseLevel,
+    buildings: sortedDescending(buildings),
+    ...(workers === undefined ? {} : { workers }),
+    updatedAt,
+  };
   if (constructions === undefined) return entry;
   if (!Array.isArray(constructions) || !constructions.every(isConstruction)) return null;
   return constructions.length > 0 ? { ...entry, constructions } : entry;
