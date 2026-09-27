@@ -9,7 +9,7 @@ import {
   withSharedCount,
   withSharedLevel,
 } from "../planner/buildings";
-import { constructionStep, startConstruction } from "../planner/constructions";
+import { constructionStep, startConstruction, withRemaining } from "../planner/constructions";
 import type { NextStep } from "../planner/nextSteps";
 import { colonyProgress } from "../planner/progress";
 import { filterToUpgrade } from "../planner/statuses";
@@ -135,6 +135,14 @@ function ColonyPanel({
     return constructions.filter((_, i) => i !== index);
   }
 
+  function editConstruction(index: number, seconds: number) {
+    save({
+      constructions: constructions.map((construction, i) =>
+        i === index ? withRemaining(construction, seconds, now()) : construction,
+      ),
+    });
+  }
+
   function applyConstruction(index: number) {
     const step = constructionStep(catalog, constructions[index]);
     save({
@@ -185,6 +193,7 @@ function ColonyPanel({
         onDone={applyStep}
         onDoneConstruction={applyConstruction}
         onCancelConstruction={(index) => save({ constructions: withoutConstruction(index) })}
+        onEditConstruction={editConstruction}
       />
 
       <BuildingsList

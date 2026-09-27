@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { AccountControl } from "./AccountControl";
 import { Modal } from "./Modal";
 import { NotificationsControl } from "./NotificationsControl";
@@ -7,11 +7,12 @@ import { TimerCard } from "./TimerCard";
 import { TimerChip, TimerChipSkeleton } from "./TimerChip";
 import type { AuthService } from "../auth/auth";
 import { useAuth } from "../auth/useAuth";
-import { DROPS } from "../drops";
+import { dropNotices, DROPS } from "../drops";
 import { useDropsTimers, type DropTimerState } from "../hooks/useDropsTimers";
-import { useReadyDropTitle } from "../hooks/useReadyDropTitle";
+import { useReadyTitle } from "../hooks/useReadyTitle";
 import { useReadyNotifications } from "../hooks/useReadyNotifications";
 import { CATALOG, type Catalog } from "../planner/catalog";
+import { constructionNotices } from "../planner/constructions";
 import { createMemoryColonyStore, type ColonyStore } from "../store/colonyStore";
 import type { DropStore } from "../store/dropStore";
 import { createMemorySettingsStore, type SettingsStore } from "../store/settingsStore";
@@ -24,8 +25,6 @@ type AppProps = {
   settingsStore?: SettingsStore;
   catalog?: Catalog;
 };
-
-const STORAGE_KEYS = DROPS.map((drop) => drop.storageKey);
 
 function TimerChipsRow({
   auth,
@@ -62,8 +61,13 @@ function TimerChipsRow({
 function App({ store, auth, now, colonyStore, settingsStore, catalog = CATALOG }: AppProps) {
   const [fallbackColonyStore] = useState(createMemoryColonyStore);
   const [fallbackSettingsStore] = useState(createMemorySettingsStore);
-  useReadyDropTitle(store, STORAGE_KEYS, now);
-  const { permission, requestPermission } = useReadyNotifications(DROPS, store, now);
+  const colonies = colonyStore ?? fallbackColonyStore;
+  const readNotices = useCallback(
+    () => [...dropNotices(store), ...constructionNotices(catalog, colonies)],
+    [store, catalog, colonies],
+  );
+  useReadyTitle(readNotices, now);
+  const { permission, requestPermission } = useReadyNotifications(readNotices, now);
   const timers = useDropsTimers(DROPS, store, now);
   const [advancedDropKey, setAdvancedDropKey] = useState<string | null>(null);
   const advancedDrop = DROPS.find((drop) => drop.storageKey === advancedDropKey) ?? null;
@@ -84,7 +88,7 @@ function App({ store, auth, now, colonyStore, settingsStore, catalog = CATALOG }
         </div>
 
         <Planner
-          store={colonyStore ?? fallbackColonyStore}
+          store={colonies}
           settingsStore={settingsStore ?? fallbackSettingsStore}
           catalog={catalog}
           now={now}

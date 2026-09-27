@@ -57,7 +57,10 @@ export function NotificationsControl({ permission, requestPermission }: Notifica
         >
           <div className="rounded-2xl border border-white/10 bg-[#12101f] p-6 text-center text-sm text-white/70">
             {result === "granted" ? (
-              <p>Notifications enabled. You will be notified when a Drop is ready.</p>
+              <p>
+                Notifications enabled. You will be notified when a Drop is ready or a Construction
+                is finished.
+              </p>
             ) : (
               <p>
                 Notifications blocked. You can allow them from your browser's site settings if you

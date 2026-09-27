@@ -105,6 +105,24 @@ function fakeSyncedStore(initialStatus: SyncStatus = "synced") {
   });
 }
 
+function storeWithConstruction(colonyId: string, finishAt: number, observatory = 1) {
+  const colonyStore = createMemoryColonyStore();
+  colonyStore.set("main", {
+    starBaseLevel: 1,
+    buildings: observatory > 0 ? { observatory: [observatory] } : {},
+    updatedAt: 1,
+  });
+  colonyStore.set(colonyId, {
+    starBaseLevel: 1,
+    buildings: { ...colonyStore.get(colonyId)?.buildings, mine: [1] },
+    constructions: [
+      { kind: "upgrade", typeId: "mine", instance: 1, count: 1, targetLevel: 2, finishAt },
+    ],
+    updatedAt: 1,
+  });
+  return colonyStore;
+}
+
 function chip(name: string) {
   return within(screen.getByRole("group", { name: `${name} timer` }));
 }
@@ -1123,18 +1141,141 @@ describe("App", () => {
           });
         }
 
-        it("offers Start next to Done on every step whose time is known", () => {
+        it("offers Start next to Done on every step", () => {
           renderConstructions({ observatory: [1], mine: [3, 1] });
 
           expect(
             stepItems().map(
               (item) => within(item).queryByRole("button", { name: /^Start/ })?.textContent ?? null,
             ),
-          ).toEqual(["Start", "Start", null]);
-          expect(screen.getByRole("button", { name: "Start Build Cannon" })).toBeInTheDocument();
-          expect(
-            screen.queryByRole("button", { name: "Start Upgrade Mine to level 2" }),
-          ).toBeNull();
+          ).toEqual(["Start", "Start", "Start"]);
+        });
+
+        describe("a step whose time is unknown", () => {
+          const START_UNKNOWN = "Start Upgrade Mine to level 2";
+          const durationInput = () =>
+            screen.getByRole("textbox", { name: "Duration of Upgrade Mine to level 2" });
+
+          it("asks for a duration, then starts the Construction with it", async () => {
+            const colonyStore = renderConstructions({ observatory: [1], mine: [3, 1] });
+
+            await click(START_UNKNOWN);
+            expect(colonyStore.get("main")?.constructions).toBeUndefined();
+            await userEvent.type(durationInput(), "1h 30m");
+            await click("Confirm Start Upgrade Mine to level 2");
+
+            expect(steps()[0]).toBe("Upgrade Mine to level 2 | 01:30:00");
+            expect(colonyStore.get("main")?.constructions).toEqual([
+              {
+                kind: "upgrade",
+                typeId: "mine",
+                instance: 2,
+                count: 1,
+                targetLevel: 2,
+                finishAt: NOW + 90 * MINUTE,
+              },
+            ]);
+          });
+
+          it("rejects a duration it cannot read and starts nothing", async () => {
+            const colonyStore = renderConstructions({ observatory: [1], mine: [3, 1] });
+
+            await click(START_UNKNOWN);
+            await userEvent.type(durationInput(), "soon");
+            await click("Confirm Start Upgrade Mine to level 2");
+
+            expect(screen.getByRole("alert")).toHaveTextContent("Enter a duration like 1h 30m");
+            expect(colonyStore.get("main")?.constructions).toBeUndefined();
+          });
+
+          it("starts nothing when the player goes back", async () => {
+            const colonyStore = renderConstructions({ observatory: [1], mine: [3, 1] });
+
+            await click(START_UNKNOWN);
+            await click("Back Start Upgrade Mine to level 2");
+
+            expect(screen.queryByRole("textbox")).toBeNull();
+            expect(steps()[2]).toBe("Upgrade Mine to level 2 | time unknown");
+            expect(colonyStore.get("main")?.constructions).toBeUndefined();
+          });
+        });
+
+        describe("remaining time", () => {
+          const remainingInput = () =>
+            screen.getByRole("textbox", { name: "Remaining time of Upgrade Mine to level 3" });
+
+          it("rewrites the Finish date and the countdown follows", async () => {
+            const colonyStore = renderConstructions({ observatory: [2], mine: [3, 2] });
+            await click("Start Upgrade Mine to level 3");
+            passTime(20 * MINUTE);
+
+            await click("Edit Upgrade Mine to level 3");
+            expect(remainingInput()).toHaveValue("30m");
+            await userEvent.clear(remainingInput());
+            await userEvent.type(remainingInput(), "10m");
+            await click("Confirm Edit Upgrade Mine to level 3");
+
+            expect(steps()[0]).toBe("Upgrade Mine to level 3 | 00:10:00");
+            expect(colonyStore.get("main")?.constructions?.[0].finishAt).toBe(NOW + 30 * MINUTE);
+
+            passTime(10 * MINUTE);
+
+            expect(steps()[0]).toBe("Upgrade Mine to level 3 | Finished");
+          });
+
+          it("keeps the Finish date when the edit is abandoned", async () => {
+            const colonyStore = renderConstructions({ observatory: [2], mine: [3, 2] });
+            await click("Start Upgrade Mine to level 3");
+
+            await click("Edit Upgrade Mine to level 3");
+            await userEvent.clear(remainingInput());
+            await userEvent.type(remainingInput(), "1m");
+            await click("Back Edit Upgrade Mine to level 3");
+
+            expect(steps()[0]).toBe("Upgrade Mine to level 3 | 00:50:00");
+            expect(colonyStore.get("main")?.constructions?.[0].finishAt).toBe(NOW + 50 * MINUTE);
+          });
+        });
+
+        it("shows a Construction as Finished once its Finish date has passed", async () => {
+          renderConstructions({ observatory: [2], mine: [3, 2] });
+          await click("Start Upgrade Mine to level 3");
+
+          passTime(50 * MINUTE - 1000);
+          expect(steps()[0]).toBe("Upgrade Mine to level 3 | 00:00:01");
+
+          passTime(1000);
+          expect(steps()[0]).toBe("Upgrade Mine to level 3 | Finished");
+        });
+
+        it("keeps running and can be applied after the Star Base is lowered", async () => {
+          const colonyStore = renderConstructions({ observatory: [2], mine: [4, 3] }, 2);
+          await click("Start Upgrade Mine to level 4");
+
+          await userEvent.selectOptions(starBaseSelect(), "1");
+          expect(steps()[0]).toBe("Upgrade Mine to level 4 | 01:00:00");
+          await click("Done Upgrade Mine to level 4");
+
+          expect(colonyStore.get("main")?.buildings.mine).toEqual([4, 4]);
+          expect(colonyStore.get("main")?.constructions ?? []).toEqual([]);
+        });
+
+        it("keeps running on a relocked Colony and can be applied once it is unlocked again", async () => {
+          const colonyStore = renderConstructions({ observatory: [1] });
+          await userEvent.click(screen.getByRole("tab", { name: "Colony 1" }));
+          await userEvent.click(screen.getAllByRole("button", { name: "Start Build Mine" })[0]);
+          await userEvent.click(screen.getByRole("tab", { name: "Main planet" }));
+
+          await click("Decrease Observatory owned");
+          passTime(40 * MINUTE);
+          await click("Increase Observatory owned");
+          await userEvent.click(screen.getByRole("tab", { name: "Colony 1" }));
+
+          expect(steps()[0]).toBe("Build Mine | Finished");
+          await userEvent.click(screen.getAllByRole("button", { name: "Done Build Mine" })[0]);
+
+          expect(colonyStore.get("colony-1")?.buildings.mine).toEqual([1]);
+          expect(colonyStore.get("colony-1")?.constructions ?? []).toEqual([]);
         });
 
         it("shows a started step at the top with a countdown from the catalog time, not repeated below", async () => {
@@ -1205,7 +1346,7 @@ describe("App", () => {
           await click("Start Build Cannon");
           passTime(10 * MINUTE);
 
-          expect(steps()).toEqual(["Build Cannon | 00:00:00"]);
+          expect(steps()).toEqual(["Build Cannon | Finished"]);
           await click("Done Build Cannon");
 
           expect(levelsOf("Cannon")).toEqual(["1"]);
@@ -1292,6 +1433,40 @@ describe("App", () => {
           act(() => screen.getByRole("button", { name: "Show all 11 steps" }).click());
 
           expect(screen.getByRole("button", { name: "Start Build Cannon" })).toBeDisabled();
+        });
+
+        it("disables the duration Start once the last free place is taken", async () => {
+          const colonyStore = createMemoryColonyStore();
+          colonyStore.set("main", {
+            starBaseLevel: 1,
+            buildings: { observatory: [1], mine: [3, 1] },
+            constructions: Array.from({ length: 9 }, () => ({
+              kind: "upgrade" as const,
+              typeId: "observatory",
+              instance: 1,
+              count: 1,
+              targetLevel: 2,
+              finishAt: NOW + MINUTE,
+            })),
+            updatedAt: 1,
+          });
+          render(
+            <App
+              store={createMemoryDropStore()}
+              auth={SIGNED_OUT_AUTH}
+              now={() => time}
+              colonyStore={colonyStore}
+              catalog={stepCatalog()}
+            />,
+          );
+          await click("Show all 11 steps");
+          await click("Start Upgrade Mine to level 2");
+
+          await click("Start Build Cannon");
+
+          expect(
+            screen.getByRole("button", { name: "Confirm Start Upgrade Mine to level 2" }),
+          ).toBeDisabled();
         });
 
         it("keeps Constructions after a reload", async () => {
@@ -1746,6 +1921,29 @@ describe("App", () => {
       expect(document.title).toBe(DEFAULT_TITLE);
     });
 
+    it("counts Finished Constructions together with Ready Drops", () => {
+      let time = NOW;
+      const store = createMemoryDropStore({ "gl-timer-star-battery": NOW - 1000 });
+      const colonyStore = storeWithConstruction("colony-1", NOW + 60 * 1000, 0);
+      render(
+        <App
+          store={store}
+          auth={SIGNED_OUT_AUTH}
+          now={() => time}
+          colonyStore={colonyStore}
+          catalog={FIXTURE_CATALOG}
+        />,
+      );
+      expect(document.title).toBe(`(1) ${DEFAULT_TITLE}`);
+
+      time = NOW + 60 * 1000;
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+
+      expect(document.title).toBe(`(2) ${DEFAULT_TITLE}`);
+    });
+
     it("restores the default title when the app unmounts", () => {
       const store = createMemoryDropStore({ "gl-timer-star-battery": NOW - 1000 });
       const { unmount } = render(<App store={store} auth={SIGNED_OUT_AUTH} now={() => NOW} />);
@@ -2008,6 +2206,74 @@ describe("App", () => {
       tick();
 
       expect(sent).toHaveLength(2);
+    });
+
+    describe("Constructions", () => {
+      function renderWithConstruction(colonyStore: ColonyStore, now: () => number) {
+        render(
+          <App
+            store={createMemoryDropStore()}
+            auth={SIGNED_OUT_AUTH}
+            now={now}
+            colonyStore={colonyStore}
+            catalog={FIXTURE_CATALOG}
+          />,
+        );
+      }
+
+      it("sends one notification when a Construction becomes Finished", () => {
+        const { sent } = installFakeNotification("granted");
+        let time = NOW;
+        renderWithConstruction(storeWithConstruction("main", NOW + 60 * 1000), () => time);
+        tick(3000);
+        expect(sent).toHaveLength(0);
+
+        time = NOW + 2 * 60 * 1000;
+        tick();
+        tick();
+
+        expect(sent).toEqual([
+          {
+            title: "Upgrade Mine to level 2 is finished",
+            options: { body: "On Main planet.", tag: "construction-main-upgrade-mine-1-2-0" },
+          },
+        ]);
+      });
+
+      it("notifies for a Construction on a relocked Colony", () => {
+        const { sent } = installFakeNotification("granted");
+        let time = NOW;
+        renderWithConstruction(storeWithConstruction("colony-1", NOW + 60 * 1000, 0), () => time);
+        tick();
+
+        time = NOW + 2 * 60 * 1000;
+        tick();
+
+        expect(screen.getByRole("tab", { name: "Colony 1" })).toBeDisabled();
+        expect(sent.map((notification) => notification.title)).toEqual([
+          "Upgrade Mine to level 2 is finished",
+        ]);
+      });
+
+      it("sends nothing for a Construction already Finished at load", () => {
+        const { sent } = installFakeNotification("granted");
+        renderWithConstruction(storeWithConstruction("main", NOW - 1000), () => NOW);
+        tick(5000);
+
+        expect(sent).toHaveLength(0);
+      });
+
+      it("sends nothing when permission is denied", () => {
+        const { sent } = installFakeNotification("denied");
+        let time = NOW;
+        renderWithConstruction(storeWithConstruction("main", NOW + 60 * 1000), () => time);
+        tick();
+
+        time = NOW + 2 * 60 * 1000;
+        tick();
+
+        expect(sent).toHaveLength(0);
+      });
     });
 
     it("sends nothing for a Drop already Ready at load", () => {
