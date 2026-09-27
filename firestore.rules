@@ -56,15 +56,50 @@ service cloud.firestore {
         && (values.size() <= 29 || isValidLevels(values[29]));
     }
 
+    function isBoundedInt(value, min, max) {
+      return value is int && value >= min && value <= max;
+    }
+
+    function isValidConstruction(value) {
+      return value is map
+        && value.keys().hasOnly(['kind', 'typeId', 'instance', 'count', 'targetLevel', 'finishAt'])
+        && value.keys().hasAll(['kind', 'typeId', 'instance', 'count', 'targetLevel', 'finishAt'])
+        && value.kind in ['build', 'upgrade']
+        && value.typeId is string
+        && value.typeId.size() >= 1
+        && value.typeId.size() <= 64
+        && isBoundedInt(value.instance, 1, 500)
+        && isBoundedInt(value.count, 1, 500)
+        && isBoundedInt(value.targetLevel, 1, 99)
+        && isValidTimestamp(value.finishAt);
+    }
+
+    function isValidConstructions(values) {
+      return values is list
+        && values.size() <= 10
+        && (values.size() <= 0 || isValidConstruction(values[0]))
+        && (values.size() <= 1 || isValidConstruction(values[1]))
+        && (values.size() <= 2 || isValidConstruction(values[2]))
+        && (values.size() <= 3 || isValidConstruction(values[3]))
+        && (values.size() <= 4 || isValidConstruction(values[4]))
+        && (values.size() <= 5 || isValidConstruction(values[5]))
+        && (values.size() <= 6 || isValidConstruction(values[6]))
+        && (values.size() <= 7 || isValidConstruction(values[7]))
+        && (values.size() <= 8 || isValidConstruction(values[8]))
+        && (values.size() <= 9 || isValidConstruction(values[9]));
+    }
+
     function isValidColony() {
-      return request.resource.data.keys().hasOnly(['starBase', 'buildings', 'updatedAt'])
+      return request.resource.data.keys().hasOnly(['starBase', 'buildings', 'constructions', 'updatedAt'])
         && request.resource.data.keys().hasAll(['starBase', 'buildings', 'updatedAt'])
         && request.resource.data.starBase is int
         && request.resource.data.starBase >= 1
         && request.resource.data.starBase <= 20
         && request.resource.data.buildings is map
         && isValidTimestamp(request.resource.data.updatedAt)
-        && isValidBuildings(request.resource.data.buildings.values());
+        && isValidBuildings(request.resource.data.buildings.values())
+        && (!('constructions' in request.resource.data)
+          || isValidConstructions(request.resource.data.constructions));
     }
 
     function isValidSettings() {

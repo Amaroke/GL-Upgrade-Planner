@@ -3,11 +3,13 @@ import { BuildingsList } from "./BuildingsList";
 import { NextSteps } from "./NextSteps";
 import {
   groupedBuildingsForColony,
+  sharedLevel,
   withCount,
   withLevel,
   withSharedCount,
   withSharedLevel,
 } from "../planner/buildings";
+import { constructionStep, startConstruction } from "../planner/constructions";
 import type { NextStep } from "../planner/nextSteps";
 import { colonyProgress } from "../planner/progress";
 import { filterToUpgrade } from "../planner/statuses";
@@ -19,7 +21,7 @@ import {
   observatoryLevel,
   type ColonyDefinition,
 } from "../planner/colonies";
-import type { ColonyBuildings, ColonyEntry, ColonyStore } from "../store/colonyStore";
+import type { ColonyBuildings, ColonyEntry, ColonyStore, Construction } from "../store/colonyStore";
 import {
   PLANNER_SETTINGS_KEY,
   type PlannerSettings,
@@ -28,6 +30,8 @@ import {
 
 const DEFAULT_STAR_BASE_LEVEL = 1;
 const NO_BUILDINGS: ColonyBuildings = {};
+const NO_CONSTRUCTIONS: Construction[] = [];
+const MAX_CONSTRUCTIONS = 10;
 
 type PlannerOptions = Omit<PlannerSettings, "updatedAt">;
 
@@ -78,6 +82,7 @@ function ColonyPanel({
   const entry = useColonyEntry(store, colony.id);
   const starBaseLevel = entry?.starBaseLevel ?? DEFAULT_STAR_BASE_LEVEL;
   const buildings = entry?.buildings ?? NO_BUILDINGS;
+  const constructions = entry?.constructions ?? NO_CONSTRUCTIONS;
   const [{ onlyToUpgrade, hideWallUpgrades }, updateOptions] = usePlannerOptions(
     settingsStore,
     now,
@@ -86,31 +91,56 @@ function ColonyPanel({
   const groups = onlyToUpgrade ? filterToUpgrade(allGroups, starBaseLevel, buildings) : allGroups;
   const selectId = `star-base-level-${colony.id}`;
 
-  function save(changes: { starBaseLevel?: number; buildings?: ColonyBuildings }) {
-    store.set(colony.id, { starBaseLevel, buildings, ...changes, updatedAt: now() });
+  function save(changes: {
+    starBaseLevel?: number;
+    buildings?: ColonyBuildings;
+    constructions?: Construction[];
+  }) {
+    const next = { starBaseLevel, buildings, constructions, ...changes };
+    store.set(colony.id, {
+      starBaseLevel: next.starBaseLevel,
+      buildings: next.buildings,
+      ...(next.constructions.length > 0 ? { constructions: next.constructions } : {}),
+      updatedAt: now(),
+    });
   }
 
   function saveLevels(typeId: string, levels: number[]) {
     save({ buildings: { ...buildings, [typeId]: levels } });
   }
 
-  function applyStep(step: NextStep) {
+  function appliedLevels(step: NextStep): number[] {
     const levels = buildings[step.typeId] ?? [];
     if (step.shared) {
-      saveLevels(
-        step.typeId,
-        step.kind === "build"
-          ? withSharedCount(levels, levels.length + step.count)
-          : withSharedLevel(levels, step.targetLevel),
-      );
-      return;
+      return step.kind === "build"
+        ? withSharedCount(levels, levels.length + step.count)
+        : withSharedLevel(levels, Math.max(sharedLevel(levels), step.targetLevel));
     }
-    saveLevels(
-      step.typeId,
-      step.kind === "build"
-        ? withCount(levels, levels.length + 1)
-        : withLevel(levels, step.instance - 1, step.targetLevel),
-    );
+    if (step.kind === "build") return withCount(levels, levels.length + 1);
+    const fromLevel = step.targetLevel - 1;
+    const index =
+      levels[step.instance - 1] === fromLevel ? step.instance - 1 : levels.indexOf(fromLevel);
+    return index === -1 ? levels : withLevel(levels, index, step.targetLevel);
+  }
+
+  function applyStep(step: NextStep) {
+    saveLevels(step.typeId, appliedLevels(step));
+  }
+
+  function startStep(step: NextStep, seconds: number) {
+    save({ constructions: [...constructions, startConstruction(step, seconds, now())] });
+  }
+
+  function withoutConstruction(index: number): Construction[] {
+    return constructions.filter((_, i) => i !== index);
+  }
+
+  function applyConstruction(index: number) {
+    const step = constructionStep(catalog, constructions[index]);
+    save({
+      buildings: { ...buildings, [step.typeId]: appliedLevels(step) },
+      constructions: withoutConstruction(index),
+    });
   }
 
   return (
@@ -146,9 +176,15 @@ function ColonyPanel({
         colonyId={colony.id}
         starBaseLevel={starBaseLevel}
         buildings={buildings}
+        constructions={constructions}
+        canStart={constructions.length < MAX_CONSTRUCTIONS}
+        now={now}
         hideWallUpgrades={hideWallUpgrades}
         onHideWallUpgradesChange={(value) => updateOptions({ hideWallUpgrades: value })}
+        onStart={startStep}
         onDone={applyStep}
+        onDoneConstruction={applyConstruction}
+        onCancelConstruction={(index) => save({ constructions: withoutConstruction(index) })}
       />
 
       <BuildingsList

@@ -462,6 +462,52 @@ describe("deferred sync", () => {
     expect(screen.getByRole("combobox", { name: "Star Base level" })).toHaveValue("7");
   });
 
+  it("sends a started Construction with the Colony in the deferred send", async () => {
+    await renderSignedIn();
+    act(() => screen.getAllByRole("button", { name: /^Start (Build|Upgrade) / })[0].click());
+
+    await tick(FIVE_MINUTES);
+
+    expect(setDoc).toHaveBeenCalledWith(
+      { path: "users/player-1/colonies/main" },
+      expect.objectContaining({
+        constructions: [
+          expect.objectContaining({ finishAt: expect.any(Number), typeId: expect.any(String) }),
+        ],
+      }),
+    );
+  });
+
+  it("shows a Construction started on another device at the top of the Next steps", async () => {
+    await renderSignedIn();
+
+    act(() =>
+      snapshotHandlers.get("users/player-1/colonies/main")?.({
+        data: () => ({
+          starBase: 1,
+          buildings: {},
+          constructions: [
+            {
+              kind: "build",
+              typeId: "starport",
+              instance: 1,
+              count: 1,
+              targetLevel: 1,
+              finishAt: NOW + 3600 * 1000,
+            },
+          ],
+          updatedAt: NOW + 5000,
+        }),
+      }),
+    );
+
+    const [first] = within(screen.getByRole("list", { name: "Next steps" })).getAllByRole(
+      "listitem",
+    );
+    expect(first).toHaveTextContent("01:00:00");
+    expect(within(first).getByRole("button", { name: /^Cancel / })).toBeInTheDocument();
+  });
+
   it("keeps a newer local Colony edit over an older one from the listener", async () => {
     await renderSignedIn();
     setStarBaseLevel(4);

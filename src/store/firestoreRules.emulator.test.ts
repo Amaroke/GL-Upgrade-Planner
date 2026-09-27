@@ -172,6 +172,67 @@ describe("Firestore security rules for Colonies", () => {
     await assertFails(setDoc(ref, { ...VALID_COLONY, buildings: tooManyTypes }));
   });
 
+  describe("Constructions", () => {
+    const CONSTRUCTION = {
+      kind: "upgrade",
+      typeId: "gold-mine",
+      instance: 2,
+      count: 1,
+      targetLevel: 3,
+      finishAt: 900,
+    };
+
+    function withConstructions(constructions: unknown) {
+      return { ...VALID_COLONY, constructions };
+    }
+
+    it("accepts valid Constructions up to the wide bounds", async () => {
+      const ref = doc(firestoreOf(testEnv.authenticatedContext("player-1")), COLONY_PATH);
+
+      await assertSucceeds(setDoc(ref, withConstructions([])));
+      await assertSucceeds(setDoc(ref, withConstructions([CONSTRUCTION])));
+      await assertSucceeds(
+        setDoc(
+          ref,
+          withConstructions(
+            Array.from({ length: 10 }, () => ({
+              ...CONSTRUCTION,
+              kind: "build",
+              typeId: "a".repeat(64),
+              instance: 500,
+              count: 500,
+              targetLevel: 99,
+            })),
+          ),
+        ),
+      );
+      const snapshot = await getDoc(ref);
+      expect(snapshot.data()?.constructions).toHaveLength(10);
+    });
+
+    it("rejects malformed Constructions", async () => {
+      const ref = doc(firestoreOf(testEnv.authenticatedContext("player-1")), COLONY_PATH);
+
+      await assertFails(setDoc(ref, withConstructions({})));
+      await assertFails(setDoc(ref, withConstructions(Array(11).fill(CONSTRUCTION))));
+      await assertFails(setDoc(ref, withConstructions([{ ...CONSTRUCTION, extra: 1 }])));
+      const { finishAt: _, ...withoutFinishAt } = CONSTRUCTION;
+      await assertFails(setDoc(ref, withConstructions([withoutFinishAt])));
+      await assertFails(setDoc(ref, withConstructions([{ ...CONSTRUCTION, kind: "repair" }])));
+      await assertFails(setDoc(ref, withConstructions([{ ...CONSTRUCTION, typeId: "" }])));
+      await assertFails(
+        setDoc(ref, withConstructions([{ ...CONSTRUCTION, typeId: "a".repeat(65) }])),
+      );
+      await assertFails(setDoc(ref, withConstructions([{ ...CONSTRUCTION, instance: 0 }])));
+      await assertFails(setDoc(ref, withConstructions([{ ...CONSTRUCTION, count: 501 }])));
+      await assertFails(setDoc(ref, withConstructions([{ ...CONSTRUCTION, targetLevel: 100 }])));
+      await assertFails(setDoc(ref, withConstructions([{ ...CONSTRUCTION, targetLevel: 2.5 }])));
+      await assertFails(setDoc(ref, withConstructions([{ ...CONSTRUCTION, finishAt: -1 }])));
+      await assertFails(setDoc(ref, withConstructions([{ ...CONSTRUCTION, finishAt: "900" }])));
+      await assertFails(setDoc(ref, withConstructions([CONSTRUCTION, "x"])));
+    });
+  });
+
   it("lets an owner delete their own Colony document", async () => {
     const ref = doc(firestoreOf(testEnv.authenticatedContext("player-1")), COLONY_PATH);
     await assertSucceeds(setDoc(ref, VALID_COLONY));
