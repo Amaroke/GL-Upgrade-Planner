@@ -97,8 +97,9 @@ function App({
             catalog,
             colonies,
             settings.get(PLANNER_SETTINGS_KEY)?.hideWallUpgrades ?? false,
+            now(),
           ),
-    [catalog, colonies, settings, isLoading],
+    [catalog, colonies, settings, isLoading, now],
   );
   useReadyTitle(readNotices, now, readIdleWorkers);
   const { permission, requestPermission } = useReadyNotifications(readNotices, now);

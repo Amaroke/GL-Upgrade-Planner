@@ -1540,14 +1540,22 @@ describe("App", () => {
             expect(colonyStore.get("main")?.workers).toBe(4);
           });
 
-          it("disables Start with No free Worker when every Worker is busy, Finished included", async () => {
+          it("disables Start with No free Worker when every Worker is busy", async () => {
+            renderConstructions({ observatory: [2], mine: [3, 2] });
+            await click("Start Upgrade Mine to level 3");
+
+            expect(screen.getByRole("button", { name: "Start Build Cannon" })).toBeDisabled();
+            expect(workersStatus()).toHaveTextContent("No free Worker");
+          });
+
+          it("frees the Worker once the Construction is Finished", async () => {
             renderConstructions({ observatory: [2], mine: [3, 2] });
             await click("Start Upgrade Mine to level 3");
             passTime(60 * MINUTE);
 
             expect(steps()[0]).toBe("Upgrade Mine to level 3 | Finished");
-            expect(screen.getByRole("button", { name: "Start Build Cannon" })).toBeDisabled();
-            expect(workersStatus()).toHaveTextContent("No free Worker");
+            expect(screen.getByRole("button", { name: "Start Build Cannon" })).toBeEnabled();
+            expect(workersStatus()).toBeEmptyDOMElement();
           });
 
           it("offers Start again once another Worker is added", async () => {
@@ -1666,13 +1674,13 @@ describe("App", () => {
             expect(hasDot("Main planet")).toBe(true);
           });
 
-          it("stays hidden while the Construction is Finished", async () => {
+          it("comes back once the Construction is Finished", async () => {
             renderConstructions({ observatory: [2], mine: [3, 2] });
             await click("Start Upgrade Mine to level 3");
 
             passTime(50 * MINUTE);
 
-            expect(hasDot("Main planet")).toBe(false);
+            expect(hasDot("Main planet")).toBe(true);
           });
 
           it("follows the Worker count", async () => {
@@ -2192,7 +2200,7 @@ describe("App", () => {
       expect(document.title).toBe(`(4) ${DEFAULT_TITLE}`);
     });
 
-    it("counts a Finished Construction once, its Worker staying busy", () => {
+    it("counts a Finished Construction once, not as a free Worker too", () => {
       let time = NOW;
       const colonyStore = storeWithConstruction("main", NOW + 60 * 1000, 0);
       render(
