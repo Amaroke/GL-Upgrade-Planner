@@ -34,7 +34,10 @@ type LabProps = {
 const DISABLED = "disabled:cursor-not-allowed disabled:opacity-40";
 const HEADING = "text-sm font-semibold uppercase tracking-wide text-white/50";
 
-const SLOT_TITLES: Record<LabKind, string> = { research: "Research", unlock: "Unlock" };
+const SLOT_TITLES: Record<LabKind, string> = {
+  research: "Research",
+  unlock: "Unlock",
+};
 
 const STATUS_LABELS: Record<Exclude<UnitStatus, "locked">, string> = {
   "to-unlock": "To unlock",
@@ -51,7 +54,11 @@ const STATUS_STYLES: Record<UnitStatus, string> = {
   "over-limit": "bg-red-500/15 text-red-300",
 };
 
-function blockerOf(kind: LabKind, colony: LabColony, now: number): string | null {
+function blockerOf(
+  kind: LabKind,
+  colony: LabColony,
+  now: number,
+): string | null {
   if (colony[kind]) return `A ${SLOT_TITLES[kind]} is already running`;
   return kind === "research" ? researchBlocker(colony, now) : null;
 }
@@ -88,7 +95,9 @@ function StartButton({
       disabled={blocker !== null}
       title={blocker ?? undefined}
       onClick={() =>
-        step.seconds === null ? setIsAskingDuration(true) : onStart(step, step.seconds)
+        step.seconds === null
+          ? setIsAskingDuration(true)
+          : onStart(step, step.seconds)
       }
       className={`${ROW_BUTTON} ${DISABLED}`}
     >
@@ -101,7 +110,9 @@ function LaboratoryLine({ colony }: { colony: LabColony }) {
   const level = laboratoryLevel(colony.buildings);
   return (
     <span className="text-xs text-white/50">
-      {level === 0 ? "No Laboratory on this Colony" : `Laboratory level ${level}`}
+      {level === 0
+        ? "No Laboratory on this Colony"
+        : `Laboratory level ${level}`}
     </span>
   );
 }
@@ -118,9 +129,11 @@ function Slot({
   const job = colony[kind];
   const title = SLOT_TITLES[kind];
   const options = steps.filter((step) => step.kind === kind);
-  const selected = options.find((step) => step.unit.id === choice) ?? options[0];
+  const selected =
+    options.find((step) => step.unit.id === choice) ?? options[0];
   const blocker = blockerOf(kind, colony, now());
-  const noLaboratory = kind === "research" && laboratoryLevel(colony.buildings) === 0;
+  const noLaboratory =
+    kind === "research" && laboratoryLevel(colony.buildings) === 0;
 
   function content() {
     if (job) {
@@ -141,15 +154,17 @@ function Slot({
         </>
       );
     }
-    if (noLaboratory) return <span className="text-sm text-white/40">No Laboratory</span>;
-    if (!selected) return <span className="text-sm text-white/40">Nothing to {kind}</span>;
+    if (noLaboratory)
+      return <span className="text-sm text-white/40">No Laboratory</span>;
+    if (!selected)
+      return <span className="text-sm text-white/40">Nothing to {kind}</span>;
     return (
       <>
         <select
           aria-label={`Next ${title}`}
           value={selected.unit.id}
           onChange={(event) => setChoice(event.target.value)}
-          className="select min-w-0 !py-1 text-xs"
+          className="select min-w-0 py-1! text-xs"
         >
           {options.map((step) => (
             <option key={step.unit.id} value={step.unit.id}>
@@ -176,19 +191,24 @@ function Slot({
       aria-label={title}
       className="flex min-w-0 flex-1 flex-wrap items-center gap-2 rounded-xl border border-white/10 px-3 py-2"
     >
-      <span className="w-16 text-xs uppercase tracking-wide text-white/40">{title}</span>
+      <span className="w-16 text-xs uppercase tracking-wide text-white/40">
+        {title}
+      </span>
       {content()}
     </div>
   );
 }
 
-export function LaboratoryStrip({ actions, ...props }: LabProps & { actions: LabActions }) {
+export function LaboratoryStrip({
+  actions,
+  ...props
+}: LabProps & { actions: LabActions }) {
   useTick();
   const steps = unitSteps(props.catalog, props.colony);
   return (
     <section
       aria-label="Laboratory"
-      className="mt-5 rounded-2xl border border-violet-400/20 bg-violet-400/[0.03] p-3"
+      className="mt-5 rounded-2xl border border-violet-400/20 bg-violet-400/3 p-3"
     >
       <div className="mb-2 flex items-center gap-3">
         <h3 className={HEADING}>Laboratory</h3>
@@ -217,7 +237,9 @@ function LevelPips({ view }: { view: UnitView }) {
             : "border-red-400/70 bg-red-400/60";
         else if (allowed) style = "border-blue-400/50";
         else if (medal) style = "border-dashed border-amber-400/40";
-        return <span key={level} className={`h-3 w-3 rounded-sm border ${style}`} />;
+        return (
+          <span key={level} className={`h-3 w-3 rounded-sm border ${style}`} />
+        );
       })}
     </span>
   );
@@ -308,14 +330,18 @@ export function LaboratoryTable({
               {views
                 .filter((view) => view.unit.category === category)
                 .map((view) => {
-                  const step = steps.find((entry) => entry.unit.id === view.unit.id);
+                  const step = steps.find(
+                    (entry) => entry.unit.id === view.unit.id,
+                  );
                   return (
                     <UnitRow
                       key={view.unit.id}
                       view={view}
                       step={step}
                       running={jobs.some((job) => job?.unitId === view.unit.id)}
-                      blocker={step ? blockerOf(step.kind, colony, now()) : null}
+                      blocker={
+                        step ? blockerOf(step.kind, colony, now()) : null
+                      }
                       onStart={onStart}
                       onLevel={onLevel}
                     />
