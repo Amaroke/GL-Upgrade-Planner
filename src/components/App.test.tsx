@@ -444,6 +444,24 @@ describe("App", () => {
         expect(names).toEqual(["Observatory", "Mine", "Cannon", "Laser"]);
       });
 
+      it("shows a decorative icon next to a Building type name", () => {
+        renderPlanner();
+
+        const mine = screen.getByRole("group", { name: "Mine" });
+        const icon = mine.querySelector("img");
+        expect(icon).toHaveAttribute("alt", "");
+        expect(icon?.getAttribute("src")).toContain("mine");
+        expect(within(mine).getByText("Mine")).toBeInTheDocument();
+      });
+
+      it("shows the name alone for a Building type without an image", () => {
+        renderPlanner();
+
+        const cannon = screen.getByRole("group", { name: "Cannon" });
+        expect(cannon.querySelector("img")).toBeNull();
+        expect(within(cannon).getByText("Cannon")).toBeInTheDocument();
+      });
+
       it("shows the owned count against the maximum count of the Star Base", () => {
         renderPlanner();
 
@@ -976,6 +994,16 @@ describe("App", () => {
         ]);
       });
 
+      it("shows the icon of the type next to each step, or the label alone without an image", () => {
+        renderSteps({ observatory: [2], mine: [3, 2] });
+
+        expect(
+          stepItems().map(
+            (item) => item.children[0].querySelector("img")?.getAttribute("src") ?? null,
+          ),
+        ).toEqual([null, expect.stringContaining("mine"), expect.stringContaining("star-base")]);
+      });
+
       it("puts builds first, fastest first by default and longest first on demand", async () => {
         renderSteps({ observatory: [1], mine: [3, 2] });
         expect(orderSelect()).toHaveDisplayValue("Fastest first");
@@ -1208,6 +1236,20 @@ describe("App", () => {
             vi.advanceTimersByTime(1000);
           });
         }
+
+        it("shows the icon of the type next to a running Construction", async () => {
+          renderConstructions({ observatory: [1], mine: [3, 1] });
+
+          await userEvent.click(
+            screen.getByRole("button", { name: "Start Upgrade Observatory to level 2" }),
+          );
+
+          const running = stepItems()[0];
+          expect(running).toHaveTextContent("Upgrade Observatory to level 2");
+          expect(running.children[0].querySelector("img")?.getAttribute("src")).toContain(
+            "observatory",
+          );
+        });
 
         it("offers Start next to Done on every step", () => {
           renderConstructions({ observatory: [1], mine: [3, 1] });
