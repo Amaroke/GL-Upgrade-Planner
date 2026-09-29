@@ -23,6 +23,7 @@ function type(id: string, limits: [number, number][], mainOnly = false): Buildin
 const CATALOG: Catalog = {
   version: 1,
   starBase: [],
+  units: [],
   buildings: [
     type("observatory", [[1, 3]], true),
     type("mine", [[1, 2]]),

@@ -48,6 +48,17 @@ function behavesLikeAColonyStore(name: string, create: () => ColonyStore) {
       expect(store.get("main")?.workers).toBe(3);
     });
 
+    it("records the Unit levels, the Research and the Unlock of a Colony", () => {
+      const store = create();
+      const laboratory = {
+        units: { marine: 3, looter: 1 },
+        research: { unitId: "marine", targetLevel: 4, finishAt: 900 },
+        unlock: { unitId: "bazooka", targetLevel: 1, finishAt: 800 },
+      };
+      store.set("main", { ...entry(4, 500), ...laboratory });
+      expect(store.get("main")).toEqual({ ...entry(4, 500), ...laboratory });
+    });
+
     it("keeps each Colony separate", () => {
       const store = create();
       store.set("main", entry(4, 500));
@@ -134,6 +145,13 @@ describe("createLocalStorageColonyStore", () => {
     '{"starBaseLevel":2,"updatedAt":1,"constructions":[{"kind":"repair","typeId":"mine","instance":1,"count":1,"targetLevel":2,"finishAt":5}]}',
     '{"starBaseLevel":2,"updatedAt":1,"constructions":[{"kind":"build","typeId":3,"instance":1,"count":1,"targetLevel":2,"finishAt":5}]}',
     '{"starBaseLevel":2,"updatedAt":1,"constructions":[{"kind":"build","typeId":"mine","instance":1,"count":1,"targetLevel":2}]}',
+    '{"starBaseLevel":2,"updatedAt":1,"units":[]}',
+    '{"starBaseLevel":2,"updatedAt":1,"units":{"marine":"3"}}',
+    '{"starBaseLevel":2,"updatedAt":1,"units":{"marine":0}}',
+    '{"starBaseLevel":2,"updatedAt":1,"units":{"marine":2.5}}',
+    '{"starBaseLevel":2,"updatedAt":1,"research":"marine 2 5"}',
+    '{"starBaseLevel":2,"updatedAt":1,"research":{"unitId":"marine","targetLevel":2}}',
+    '{"starBaseLevel":2,"updatedAt":1,"unlock":{"unitId":3,"targetLevel":1,"finishAt":5}}',
   ])("treats the corrupted stored value %s as never set", (value) => {
     localStorage.setItem("gl-colony-main", value);
     expect(createLocalStorageColonyStore().get("main")).toBeNull();

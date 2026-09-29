@@ -244,6 +244,76 @@ describe("Firestore security rules for Colonies", () => {
     });
   });
 
+  describe("Laboratory", () => {
+    const LABORATORY = {
+      units: { marine: 3, "beetle-tank": 1 },
+      research: "marine 4 900",
+      unlock: "beetle-tank 1 800",
+    };
+
+    it("accepts Unit levels, a Research and an Unlock within the wide bounds", async () => {
+      const ref = doc(firestoreOf(testEnv.authenticatedContext("player-1")), COLONY_PATH);
+      const manyUnits = Object.fromEntries(
+        Array.from({ length: 30 }, (_, index) => [`unit-${index}`, 99]),
+      );
+      const widest = `${"a".repeat(64)} 99 4102444799999`;
+
+      await assertSucceeds(setDoc(ref, { ...VALID_COLONY, ...LABORATORY }));
+      await assertSucceeds(setDoc(ref, { ...VALID_COLONY, units: {} }));
+      await assertSucceeds(
+        setDoc(ref, { ...VALID_COLONY, units: manyUnits, research: widest, unlock: widest }),
+      );
+      const snapshot = await getDoc(ref);
+      expect(snapshot.data()?.research).toBe(widest);
+    });
+
+    it("rejects malformed Unit levels", async () => {
+      const ref = doc(firestoreOf(testEnv.authenticatedContext("player-1")), COLONY_PATH);
+      const tooManyUnits = Object.fromEntries(
+        Array.from({ length: 31 }, (_, index) => [`unit-${index}`, 1]),
+      );
+
+      for (const units of [
+        [],
+        [3],
+        "marine 3",
+        { marine: 0 },
+        { marine: 100 },
+        { marine: 2.5 },
+        { marine: "3" },
+        { marine: [3] },
+        { Marine: 3 },
+        { [`${"a".repeat(65)}`]: 3 },
+        tooManyUnits,
+      ]) {
+        await assertFails(setDoc(ref, { ...VALID_COLONY, units }));
+      }
+    });
+
+    it("rejects a malformed Research or Unlock", async () => {
+      const ref = doc(firestoreOf(testEnv.authenticatedContext("player-1")), COLONY_PATH);
+
+      for (const job of [
+        { unitId: "marine", targetLevel: 4, finishAt: 900 },
+        ["marine 4 900"],
+        5,
+        "marine 4",
+        "marine 4 900 1",
+        " 4 900",
+        "Marine 4 900",
+        `${"a".repeat(65)} 4 900`,
+        "marine 0 900",
+        "marine 100 900",
+        "marine 2.5 900",
+        "marine 4 -1",
+        "marine 4 41024447999990",
+      ]) {
+        await assertFails(setDoc(ref, { ...VALID_COLONY, research: job }));
+        await assertFails(setDoc(ref, { ...VALID_COLONY, unlock: job }));
+      }
+    });
+  });
+
   describe("Workers", () => {
     it("accepts a Worker count within the wide bounds", async () => {
       const ref = doc(firestoreOf(testEnv.authenticatedContext("player-1")), COLONY_PATH);

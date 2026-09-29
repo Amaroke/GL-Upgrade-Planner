@@ -50,6 +50,7 @@ function fixtureType(
 const FIXTURE_CATALOG: Catalog = {
   version: 1,
   starBase: [1, 2, 3].map((level) => ({ level, time: null })),
+  units: [],
   buildings: [
     fixtureType("observatory", "Observatory", "Resource", true, [
       [1, 2],
@@ -234,14 +235,15 @@ describe("App", () => {
       expect(
         timers.compareDocumentPosition(planner) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
-      expect(screen.getAllByRole("tablist")).toHaveLength(1);
-      expect(screen.getByRole("tablist")).toHaveAccessibleName("Colonies");
+      expect(
+        screen.getAllByRole("tablist").map((tablist) => tablist.getAttribute("aria-label")),
+      ).toEqual(["Colonies", "Main planet view"]);
     });
 
     it("always shows the twelve fixed Colonies, the main planet selected by default", () => {
       renderPlanner();
 
-      const tabs = screen.getAllByRole("tab");
+      const tabs = within(screen.getByRole("tablist", { name: "Colonies" })).getAllByRole("tab");
       expect(tabs).toHaveLength(12);
       expect(tabs[0]).toHaveAttribute("aria-selected", "true");
       expect(tabs.map((tab) => tab.textContent)).toEqual([
@@ -265,7 +267,7 @@ describe("App", () => {
     it("greys every other Colony", () => {
       renderPlanner();
 
-      const tabs = screen.getAllByRole("tab");
+      const tabs = within(screen.getByRole("tablist", { name: "Colonies" })).getAllByRole("tab");
       expect(tabs[0]).toBeEnabled();
       for (let i = 1; i <= 11; i++) expect(tabs[i]).toBeDisabled();
     });
@@ -280,7 +282,7 @@ describe("App", () => {
         seed(colonyStore, 1, { observatory: [3] });
         renderPlanner(colonyStore);
 
-        const tabs = screen.getAllByRole("tab");
+        const tabs = within(screen.getByRole("tablist", { name: "Colonies" })).getAllByRole("tab");
         expect(tabs[0]).toBeEnabled();
         for (let i = 1; i <= 3; i++) expect(tabs[i]).toBeEnabled();
         for (let i = 4; i <= 11; i++) expect(tabs[i]).toBeDisabled();
@@ -435,8 +437,8 @@ describe("App", () => {
         renderPlanner();
 
         const headings = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
-        expect(headings).toEqual(["Next steps", "Resource", "Tower"]);
-        const names = within(screen.getByRole("tabpanel"))
+        expect(headings).toEqual(["Laboratory", "Next steps", "Resource", "Tower"]);
+        const names = within(screen.getByRole("tabpanel", { name: "Buildings" }))
           .getAllByRole("group")
           .map((group) => group.getAttribute("aria-label"));
         expect(names).toEqual(["Observatory", "Mine", "Cannon", "Laser"]);
@@ -675,7 +677,7 @@ describe("App", () => {
       }
 
       function typeNames() {
-        return within(screen.getByRole("tabpanel"))
+        return within(screen.getByRole("tabpanel", { name: "Buildings" }))
           .queryAllByRole("group")
           .map((group) => group.getAttribute("aria-label"));
       }
@@ -799,6 +801,7 @@ describe("App", () => {
 
           expect(typeNames()).toEqual([]);
           expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
+            "Laboratory",
             "Next steps",
           ]);
 
@@ -2091,6 +2094,7 @@ describe("App", () => {
       ...FIXTURE_CATALOG,
       starBase: [{ level: 1, time: null }],
       buildings: [],
+      units: [],
     };
 
     function renderTitle(store: DropStore, now: () => number, colonyStore?: ColonyStore) {

@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "starBase": [
     {
       "level": 1,
@@ -1736,6 +1736,584 @@
         {
           "level": 6,
           "time": "0s"
+        }
+      ]
+    }
+  ],
+  "units": [
+    {
+      "id": "marine",
+      "name": "Marine",
+      "category": "Infantry",
+      "building": "training-camp",
+      "starBase": 1,
+      "startsUnlocked": true,
+      "unlockTime": null,
+      "levels": [
+        {
+          "level": 2,
+          "laboratory": 1,
+          "time": "2h"
+        },
+        {
+          "level": 3,
+          "laboratory": 1,
+          "time": "3h"
+        },
+        {
+          "level": 4,
+          "laboratory": 2,
+          "time": "5h"
+        },
+        {
+          "level": 5,
+          "laboratory": 2,
+          "time": "8h"
+        },
+        {
+          "level": 6,
+          "laboratory": 2,
+          "time": "12h"
+        }
+      ]
+    },
+    {
+      "id": "looter",
+      "name": "Looter",
+      "category": "Infantry",
+      "building": "training-camp",
+      "starBase": 1,
+      "startsUnlocked": false,
+      "unlockTime": "5m",
+      "levels": [
+        {
+          "level": 2,
+          "laboratory": 1,
+          "time": "4h"
+        },
+        {
+          "level": 3,
+          "laboratory": 1,
+          "time": "6h"
+        },
+        {
+          "level": 4,
+          "laboratory": 2,
+          "time": "10h"
+        },
+        {
+          "level": 5,
+          "laboratory": 2,
+          "time": "16h"
+        },
+        {
+          "level": 6,
+          "laboratory": 2,
+          "time": "1d"
+        }
+      ]
+    },
+    {
+      "id": "flamethrower",
+      "name": "Flamethrower",
+      "category": "Infantry",
+      "building": "training-camp",
+      "starBase": 1,
+      "startsUnlocked": false,
+      "unlockTime": "2h",
+      "levels": [
+        {
+          "level": 2,
+          "laboratory": 1,
+          "time": "4h"
+        },
+        {
+          "level": 3,
+          "laboratory": 1,
+          "time": "6h"
+        },
+        {
+          "level": 4,
+          "laboratory": 2,
+          "time": "8h"
+        },
+        {
+          "level": 5,
+          "laboratory": 2,
+          "time": "12h"
+        },
+        {
+          "level": 6,
+          "laboratory": 2,
+          "time": "12h"
+        }
+      ]
+    },
+    {
+      "id": "bazooka",
+      "name": "Bazooka",
+      "category": "Infantry",
+      "building": "training-camp",
+      "starBase": 1,
+      "startsUnlocked": false,
+      "unlockTime": "8h",
+      "levels": [
+        {
+          "level": 2,
+          "laboratory": 1,
+          "time": "8h"
+        },
+        {
+          "level": 3,
+          "laboratory": 2,
+          "time": "12h"
+        },
+        {
+          "level": 4,
+          "laboratory": 2,
+          "time": "18h"
+        },
+        {
+          "level": 5,
+          "laboratory": 2,
+          "time": "1d"
+        },
+        {
+          "level": 6,
+          "laboratory": 3,
+          "time": "1d 6h"
+        }
+      ]
+    },
+    {
+      "id": "kamikaze",
+      "name": "Kamikaze",
+      "category": "Infantry",
+      "building": "training-camp",
+      "starBase": 2,
+      "startsUnlocked": false,
+      "unlockTime": "8h",
+      "levels": [
+        {
+          "level": 2,
+          "laboratory": 2,
+          "time": "5h"
+        },
+        {
+          "level": 3,
+          "laboratory": 2,
+          "time": "7h"
+        },
+        {
+          "level": 4,
+          "laboratory": 3,
+          "time": "12h"
+        },
+        {
+          "level": 5,
+          "laboratory": 3,
+          "time": "1d"
+        },
+        {
+          "level": 6,
+          "laboratory": 4,
+          "time": "1d 12h"
+        }
+      ]
+    },
+    {
+      "id": "starlinator",
+      "name": "Starlinator",
+      "category": "Infantry",
+      "building": "training-camp",
+      "starBase": 6,
+      "startsUnlocked": false,
+      "unlockTime": "1d 4h",
+      "levels": [
+        {
+          "level": 2,
+          "laboratory": 4,
+          "time": "12h"
+        },
+        {
+          "level": 3,
+          "laboratory": 4,
+          "time": "16h"
+        },
+        {
+          "level": 4,
+          "laboratory": 4,
+          "time": "1d"
+        },
+        {
+          "level": 5,
+          "laboratory": 5,
+          "time": "1d 12h"
+        },
+        {
+          "level": 6,
+          "laboratory": 6,
+          "time": "2d"
+        }
+      ]
+    },
+    {
+      "id": "s-trike",
+      "name": "S-Trike",
+      "category": "Vehicle",
+      "building": "factory",
+      "starBase": 2,
+      "startsUnlocked": false,
+      "unlockTime": "18h",
+      "levels": [
+        {
+          "level": 2,
+          "laboratory": 1,
+          "time": "13h"
+        },
+        {
+          "level": 3,
+          "laboratory": 2,
+          "time": "1d 2h"
+        },
+        {
+          "level": 4,
+          "laboratory": 3,
+          "time": "1d 16h"
+        },
+        {
+          "level": 5,
+          "laboratory": 5,
+          "time": "2d 22h"
+        },
+        {
+          "level": 6,
+          "laboratory": 6,
+          "time": "4d 2h"
+        }
+      ]
+    },
+    {
+      "id": "beetle-tank",
+      "name": "Beetle Tank",
+      "category": "Vehicle",
+      "building": "factory",
+      "starBase": 2,
+      "startsUnlocked": false,
+      "unlockTime": "20h",
+      "levels": [
+        {
+          "level": 2,
+          "laboratory": 1,
+          "time": "13h"
+        },
+        {
+          "level": 3,
+          "laboratory": 2,
+          "time": "19h"
+        },
+        {
+          "level": 4,
+          "laboratory": 2,
+          "time": "1d 2h"
+        },
+        {
+          "level": 5,
+          "laboratory": 2,
+          "time": "2d 2h"
+        },
+        {
+          "level": 6,
+          "laboratory": 3,
+          "time": "3d 3h"
+        }
+      ]
+    },
+    {
+      "id": "raider",
+      "name": "Raider",
+      "category": "Vehicle",
+      "building": "factory",
+      "starBase": 4,
+      "startsUnlocked": false,
+      "unlockTime": "2d 8h",
+      "levels": [
+        {
+          "level": 2,
+          "laboratory": 2,
+          "time": "13h"
+        },
+        {
+          "level": 3,
+          "laboratory": 2,
+          "time": "17h"
+        },
+        {
+          "level": 4,
+          "laboratory": 3,
+          "time": "22h"
+        },
+        {
+          "level": 5,
+          "laboratory": 3,
+          "time": "1d 16h"
+        },
+        {
+          "level": 6,
+          "laboratory": 4,
+          "time": "2d 15h"
+        }
+      ]
+    },
+    {
+      "id": "the-mole",
+      "name": "The Mole",
+      "category": "Vehicle",
+      "building": "factory",
+      "starBase": 4,
+      "startsUnlocked": false,
+      "unlockTime": "2d 14h",
+      "levels": [
+        {
+          "level": 2,
+          "laboratory": 2,
+          "time": "13h"
+        },
+        {
+          "level": 3,
+          "laboratory": 2,
+          "time": "19h"
+        },
+        {
+          "level": 4,
+          "laboratory": 3,
+          "time": "1d 2h"
+        },
+        {
+          "level": 5,
+          "laboratory": 3,
+          "time": "2d 2h"
+        },
+        {
+          "level": 6,
+          "laboratory": 4,
+          "time": "3d 3h"
+        }
+      ]
+    },
+    {
+      "id": "colossus",
+      "name": "Colossus",
+      "category": "Vehicle",
+      "building": "factory",
+      "starBase": 7,
+      "startsUnlocked": false,
+      "unlockTime": "2d 18h",
+      "levels": [
+        {
+          "level": 2,
+          "laboratory": 5,
+          "time": "1d 1h"
+        },
+        {
+          "level": 3,
+          "laboratory": 5,
+          "time": "1d 1h"
+        },
+        {
+          "level": 4,
+          "laboratory": 5,
+          "time": "3d 2h"
+        },
+        {
+          "level": 5,
+          "laboratory": 5,
+          "time": "4d 2h"
+        },
+        {
+          "level": 6,
+          "laboratory": 6,
+          "time": "5d 11h"
+        }
+      ]
+    },
+    {
+      "id": "wasp",
+      "name": "Wasp",
+      "category": "Aircraft",
+      "building": "starport",
+      "starBase": 3,
+      "startsUnlocked": false,
+      "unlockTime": "1d 16h",
+      "levels": [
+        {
+          "level": 2,
+          "laboratory": 3,
+          "time": "12h"
+        },
+        {
+          "level": 3,
+          "laboratory": 3,
+          "time": "16h"
+        },
+        {
+          "level": 4,
+          "laboratory": 3,
+          "time": "1d"
+        },
+        {
+          "level": 5,
+          "laboratory": 4,
+          "time": "1d 12h"
+        },
+        {
+          "level": 6,
+          "laboratory": 5,
+          "time": "2d"
+        }
+      ]
+    },
+    {
+      "id": "hoover-ufo",
+      "name": "Hoover UFO",
+      "category": "Aircraft",
+      "building": "starport",
+      "starBase": 4,
+      "startsUnlocked": false,
+      "unlockTime": "2d 2h",
+      "levels": [
+        {
+          "level": 2,
+          "laboratory": 2,
+          "time": "1d 16h"
+        },
+        {
+          "level": 3,
+          "laboratory": 2,
+          "time": "2d 12h"
+        },
+        {
+          "level": 4,
+          "laboratory": 3,
+          "time": "3d 8h"
+        },
+        {
+          "level": 5,
+          "laboratory": 3,
+          "time": "5d"
+        },
+        {
+          "level": 6,
+          "laboratory": 4,
+          "time": "6d 12h"
+        }
+      ]
+    },
+    {
+      "id": "mender",
+      "name": "Mender",
+      "category": "Aircraft",
+      "building": "starport",
+      "starBase": 5,
+      "startsUnlocked": false,
+      "unlockTime": "2d 14h",
+      "levels": [
+        {
+          "level": 2,
+          "laboratory": 2,
+          "time": "1d"
+        },
+        {
+          "level": 3,
+          "laboratory": 3,
+          "time": "1d 12h"
+        },
+        {
+          "level": 4,
+          "laboratory": 4,
+          "time": "2d"
+        },
+        {
+          "level": 5,
+          "laboratory": 5,
+          "time": "4d"
+        },
+        {
+          "level": 6,
+          "laboratory": 6,
+          "time": "4d 12h"
+        }
+      ]
+    },
+    {
+      "id": "falcon",
+      "name": "Falcon",
+      "category": "Aircraft",
+      "building": "starport",
+      "starBase": 5,
+      "startsUnlocked": false,
+      "unlockTime": "2d 17h",
+      "levels": [
+        {
+          "level": 2,
+          "laboratory": 3,
+          "time": "1d"
+        },
+        {
+          "level": 3,
+          "laboratory": 4,
+          "time": "1d 12h"
+        },
+        {
+          "level": 4,
+          "laboratory": 5,
+          "time": "2d"
+        },
+        {
+          "level": 5,
+          "laboratory": 5,
+          "time": "4d"
+        },
+        {
+          "level": 6,
+          "laboratory": 6,
+          "time": "4d 12h"
+        }
+      ]
+    },
+    {
+      "id": "zeppelin",
+      "name": "Zeppelin",
+      "category": "Aircraft",
+      "building": "starport",
+      "starBase": 8,
+      "startsUnlocked": false,
+      "unlockTime": "3d",
+      "levels": [
+        {
+          "level": 2,
+          "laboratory": 2,
+          "time": "2d"
+        },
+        {
+          "level": 3,
+          "laboratory": 2,
+          "time": "3d"
+        },
+        {
+          "level": 4,
+          "laboratory": 3,
+          "time": "4d"
+        },
+        {
+          "level": 5,
+          "laboratory": 3,
+          "time": "6d"
+        },
+        {
+          "level": 6,
+          "laboratory": 4,
+          "time": "1w 1d"
         }
       ]
     }

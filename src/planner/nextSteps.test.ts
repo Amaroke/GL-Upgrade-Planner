@@ -33,6 +33,7 @@ function type(
 const CATALOG: Catalog = {
   version: 1,
   starBase: [],
+  units: [],
   buildings: [
     type(
       "cannon",

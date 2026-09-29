@@ -1,5 +1,6 @@
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { BuildingsList } from "./BuildingsList";
+import { LaboratoryStrip, LaboratoryTable, type LabActions } from "./Laboratory";
 import { NextSteps } from "./NextSteps";
 import {
   groupedBuildingsForColony,
@@ -10,6 +11,13 @@ import {
   withSharedLevel,
 } from "../planner/buildings";
 import { constructionStep, startConstruction, withRemaining } from "../planner/constructions";
+import {
+  appliedUnits,
+  startJob,
+  withUnitLevel,
+  type LabColony,
+  type LabKind,
+} from "../planner/laboratory";
 import { STAR_BASE_ID, type NextStep } from "../planner/nextSteps";
 import { colonyProgress } from "../planner/progress";
 import { DEFAULT_WORKERS, idleWorkers, runningConstructions } from "../planner/workers";
@@ -23,7 +31,14 @@ import {
   observatoryLevel,
   type ColonyDefinition,
 } from "../planner/colonies";
-import type { ColonyBuildings, ColonyEntry, ColonyStore, Construction } from "../store/colonyStore";
+import type {
+  ColonyBuildings,
+  ColonyEntry,
+  ColonyStore,
+  Construction,
+  LabJob,
+  UnitLevels,
+} from "../store/colonyStore";
 import {
   PLANNER_SETTINGS_KEY,
   type PlannerSettings,
@@ -33,7 +48,15 @@ import {
 const DEFAULT_STAR_BASE_LEVEL = 1;
 const NO_BUILDINGS: ColonyBuildings = {};
 const NO_CONSTRUCTIONS: Construction[] = [];
+const NO_UNITS: UnitLevels = {};
 const WORKER_OPTIONS = [1, 2, 3, 4, 5];
+
+type ColonyView = "buildings" | "laboratory";
+
+const COLONY_VIEWS: { id: ColonyView; name: string }[] = [
+  { id: "buildings", name: "Buildings" },
+  { id: "laboratory", name: "Laboratory" },
+];
 
 type PlannerOptions = Omit<PlannerSettings, "updatedAt">;
 
@@ -87,6 +110,16 @@ function ColonyPanel({
   const buildings = entry?.buildings ?? NO_BUILDINGS;
   const constructions = entry?.constructions ?? NO_CONSTRUCTIONS;
   const workers = entry?.workers ?? DEFAULT_WORKERS;
+  const units = entry?.units ?? NO_UNITS;
+  const laboratory: LabColony = {
+    starBaseLevel,
+    buildings,
+    constructions,
+    units,
+    research: entry?.research ?? null,
+    unlock: entry?.unlock ?? null,
+  };
+  const [view, setView] = useState<ColonyView>("buildings");
   const freeWorkers = workers - runningConstructions(constructions, now()).length;
   const [{ onlyToUpgrade, hideWallUpgrades }, updateOptions] = usePlannerOptions(
     settingsStore,
@@ -102,16 +135,35 @@ function ColonyPanel({
     buildings?: ColonyBuildings;
     constructions?: Construction[];
     workers?: number;
+    units?: UnitLevels;
+    research?: LabJob | null;
+    unlock?: LabJob | null;
   }) {
-    const next = { starBaseLevel, buildings, constructions, workers, ...changes };
+    const next = { ...laboratory, workers, ...changes };
     store.set(colony.id, {
       starBaseLevel: next.starBaseLevel,
       buildings: next.buildings,
       ...(next.constructions.length > 0 ? { constructions: next.constructions } : {}),
       ...(next.workers === DEFAULT_WORKERS ? {} : { workers: next.workers }),
+      ...(Object.keys(next.units).length > 0 ? { units: next.units } : {}),
+      ...(next.research ? { research: next.research } : {}),
+      ...(next.unlock ? { unlock: next.unlock } : {}),
       updatedAt: now(),
     });
   }
+
+  const labActions: LabActions = {
+    onStart: (step, seconds) => save({ [step.kind]: startJob(step, seconds, now()) }),
+    onDone: (kind: LabKind) => {
+      const job = laboratory[kind];
+      if (job) save({ units: appliedUnits(catalog, laboratory, job), [kind]: null });
+    },
+    onCancel: (kind: LabKind) => save({ [kind]: null }),
+    onEdit: (kind: LabKind, seconds: number) => {
+      const job = laboratory[kind];
+      if (job) save({ [kind]: { ...job, finishAt: now() + seconds * 1000 } });
+    },
+  };
 
   function saveLevels(typeId: string, levels: number[]) {
     save({ buildings: { ...buildings, [typeId]: levels } });
@@ -218,6 +270,8 @@ function ColonyPanel({
         </label>
       </div>
 
+      <LaboratoryStrip catalog={catalog} colony={laboratory} now={now} actions={labActions} />
+
       <NextSteps
         catalog={catalog}
         colonyId={colony.id}
@@ -235,12 +289,43 @@ function ColonyPanel({
         onEditConstruction={editConstruction}
       />
 
-      <BuildingsList
-        groups={groups}
-        starBaseLevel={starBaseLevel}
-        buildings={buildings}
-        onChange={saveLevels}
-      />
+      <div
+        role="tablist"
+        aria-label={`${colony.name} view`}
+        className="mt-6 inline-flex rounded-lg border border-white/10 p-0.5 text-sm"
+      >
+        {COLONY_VIEWS.map(({ id, name }) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={view === id}
+            onClick={() => setView(id)}
+            className={`rounded-md px-4 py-1 ${view === id ? "bg-white/10 text-[#e9e6f5]" : "text-white/50 hover:text-white/80"}`}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+
+      <div role="tabpanel" aria-label={view === "buildings" ? "Buildings" : "Laboratory"}>
+        {view === "buildings" ? (
+          <BuildingsList
+            groups={groups}
+            starBaseLevel={starBaseLevel}
+            buildings={buildings}
+            onChange={saveLevels}
+          />
+        ) : (
+          <LaboratoryTable
+            catalog={catalog}
+            colony={laboratory}
+            now={now}
+            onStart={labActions.onStart}
+            onLevel={(unitId, level) => save({ units: withUnitLevel(units, unitId, level) })}
+          />
+        )}
+      </div>
     </div>
   );
 }

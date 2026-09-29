@@ -88,7 +88,7 @@ The Building type that raises Unit levels on its own Colony. Its level caps the 
 _Avoid_: Lab, research center
 
 **Unit type**:
-A kind of troop defined in the catalog (for example Marine), unlocked on a Colony by a Building type.
+A kind of troop defined in the catalog (for example Marine), available on a Colony once its Star Base reaches the Unit type's Star Base level and the Colony owns a Building of its unlocking Building type. The Marine is at level 1 as soon as a Training Camp exists, every other Unit type needs an Unlock.
 _Avoid_: Troop, soldier
 
 **Unit level**:

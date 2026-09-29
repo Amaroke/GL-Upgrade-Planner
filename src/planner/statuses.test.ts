@@ -132,6 +132,7 @@ describe("filterToUpgrade", () => {
   const catalog: Catalog = {
     version: 1,
     starBase: [],
+    units: [],
     buildings: [MINE, type("bank", [[1, 1]]), LASER],
   };
   const groups = groupedBuildingsForColony(catalog, "main");
