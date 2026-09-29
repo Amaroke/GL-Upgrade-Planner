@@ -204,7 +204,7 @@ export function RunningJob({
       )}
       {mode === "confirmingCancel" && (
         <>
-          <span className="text-xs text-white/70">Cancel this {noun}?</span>
+          <span className="text-xs whitespace-nowrap text-white/70">Cancel this {noun}?</span>
           <button
             type="button"
             aria-label={`Confirm cancel ${label}`}

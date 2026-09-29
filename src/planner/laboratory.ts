@@ -134,23 +134,27 @@ export function unitSteps(catalog: Catalog, colony: LabColony): UnitStep[] {
     .sort(fastestFirst);
 }
 
-export function idleLaboratory(catalog: Catalog, entry: ColonyEntry | null, now: number): boolean {
+const LAB_KINDS: LabKind[] = ["research", "unlock"];
+
+export function idleLabSlots(catalog: Catalog, entry: ColonyEntry | null, now: number): LabKind[] {
   const colony = labColonyOf(entry);
-  if (laboratoryLevel(colony.buildings) === 0) return false;
-  const jobs = [colony.research, colony.unlock];
-  if (jobs.some((job) => job !== null && job.finishAt > now)) return false;
+  if (laboratoryLevel(colony.buildings) === 0) return [];
+  const steps = unitSteps(catalog, colony);
   const researchBlocked = researchBlocker(colony, now) !== null;
-  return unitSteps(catalog, colony).some(
-    (step) => colony[step.kind] === null && !(step.kind === "research" && researchBlocked),
+  return LAB_KINDS.filter(
+    (kind) =>
+      colony[kind] === null &&
+      !(kind === "research" && researchBlocked) &&
+      steps.some((step) => step.kind === kind),
   );
 }
 
-export function totalIdleLaboratories(catalog: Catalog, store: ColonyStore, now: number): number {
+export function totalIdleLabSlots(catalog: Catalog, store: ColonyStore, now: number): number {
   const observatory = observatoryLevel(store.get(MAIN_COLONY_ID)?.buildings ?? {});
-  return COLONIES.filter((colony) => isColonyUnlocked(colony, observatory)).filter((colony) => {
-    const entry = store.get(colony.id);
-    return !entry?.research && !entry?.unlock && idleLaboratory(catalog, entry, now);
-  }).length;
+  return COLONIES.filter((colony) => isColonyUnlocked(colony, observatory)).reduce(
+    (total, colony) => total + idleLabSlots(catalog, store.get(colony.id), now).length,
+    0,
+  );
 }
 
 export function jobLabel(catalog: Catalog, kind: LabKind, job: LabJob): string {
@@ -182,7 +186,7 @@ export function withUnitLevel(units: UnitLevels, unitId: string, level: number):
 export function labNotices(catalog: Catalog, store: ColonyStore): Notice[] {
   return COLONIES.flatMap((colony) => {
     const entry = store.get(colony.id);
-    return (["research", "unlock"] as const).flatMap((kind) => {
+    return LAB_KINDS.flatMap((kind) => {
       const job = entry?.[kind];
       if (!job) return [];
       return {

@@ -107,6 +107,6 @@ _Avoid_: Unit Construction, unit timer
 A Next step taking a Unit type from not unlocked to level 1 in the Laboratory. Once started it runs until its Finish date, occupies no Worker, and a Colony runs at most one Unlock at a time, alongside at most one Research.
 _Avoid_: Unit Research, discovery
 
-**Idle Laboratory**:
-A Laboratory with no Research or Unlock running while a Unit step is left to start in a free slot. It shows the Colony's yellow dot like a free Worker, and counts once in the tab title unless a Finished Research or Unlock of that Colony already counts.
+**Idle Laboratory slot**:
+The Research or the Unlock slot of a Laboratory when it holds no job and a Unit step of its kind is left to start. It shows the Colony's yellow dot like a free Worker, and each idle slot counts once in the tab title. A slot holding a Finished job is not idle, the Finished job already counts.
 _Avoid_: Free Laboratory, inactive lab
