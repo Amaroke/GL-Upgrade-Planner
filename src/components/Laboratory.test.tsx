@@ -197,6 +197,26 @@ function options(name: "Research" | "Unlock") {
 }
 
 describe("Laboratory", () => {
+  describe("icons", () => {
+    it("shows the icon of the Unit type next to its name in the table", async () => {
+      renderApp();
+      await openLaboratoryTab();
+
+      const icon = row("Marine").querySelector("img");
+      expect(icon).toHaveAttribute("alt", "");
+      expect(icon?.getAttribute("src")).toContain("marine");
+      expect(within(row("Marine")).getByText("Marine")).toBeInTheDocument();
+    });
+
+    it("shows the icon of the Unit type of the next Research and of a running one", async () => {
+      renderApp();
+
+      expect(slot("Research").querySelector("img")?.getAttribute("src")).toContain("marine");
+      await click("Start Research Marine to level 2", slot("Research"));
+      expect(slot("Research").querySelector("img")?.getAttribute("src")).toContain("marine");
+    });
+  });
+
   describe("Buildings / Laboratory tabs", () => {
     it("shows the Buildings list by default and the Laboratory table on demand", async () => {
       renderApp();

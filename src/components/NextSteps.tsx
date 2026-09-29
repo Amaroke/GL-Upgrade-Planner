@@ -13,6 +13,7 @@ import {
   type StepOrder,
 } from "../planner/nextSteps";
 import type { ColonyBuildings, Construction } from "../store/colonyStore";
+import { TypeIcon } from "./TypeIcon";
 
 const COLLAPSED_COUNT = 5;
 
@@ -121,7 +122,10 @@ function StepRow({
   const { seconds } = step;
   return (
     <li className="flex flex-wrap items-center gap-3 rounded-lg bg-surface/5 px-3 py-1.5 transition-colors hover:bg-surface/9">
-      <span className="text-sm text-ink">{label}</span>
+      <span className="flex items-center gap-2 text-sm text-ink">
+        <TypeIcon typeId={step.typeId} size={20} />
+        {label}
+      </span>
       <span className="ml-auto text-xs text-white/60">{step.time ?? "time unknown"}</span>
       {isAskingDuration ? (
         <DurationEditor
@@ -269,7 +273,10 @@ function ConstructionRow({
   const label = stepLabel(step);
   return (
     <li className="flex flex-wrap items-center gap-3 rounded-lg bg-accent/8 px-3 py-1.5 shadow-[inset_2px_0_0_var(--color-accent)]">
-      <span className="text-sm text-ink">{label}</span>
+      <span className="flex items-center gap-2 text-sm text-ink">
+        <TypeIcon typeId={step.typeId} size={20} />
+        {label}
+      </span>
       <RunningJob
         label={label}
         noun="Construction"
