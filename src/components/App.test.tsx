@@ -457,9 +457,11 @@ describe("App", () => {
         seed(colonyStore, 1, { mine: [3, 1] });
         renderPlanner(colonyStore);
 
-        const mine = within(screen.getByRole("group", { name: "Mine" }));
         expect(levelsOf("Mine")).toEqual(["3", "1"]);
-        expect(mine.getByText("Levels (max 3)")).toBeInTheDocument();
+        expect(screen.getByRole("spinbutton", { name: "Mine 1 level" })).toHaveAttribute(
+          "max",
+          "3",
+        );
       });
 
       it("updates every limit when the Star Base level changes", async () => {
@@ -471,7 +473,10 @@ describe("App", () => {
 
         const mine = within(screen.getByRole("group", { name: "Mine" }));
         expect(mine.getByText("/ 3")).toBeInTheDocument();
-        expect(mine.getByText("Levels (max 5)")).toBeInTheDocument();
+        expect(screen.getByRole("spinbutton", { name: "Mine 1 level" })).toHaveAttribute(
+          "max",
+          "5",
+        );
         expect(colonyStore.get("main")?.buildings).toEqual({ mine: [3] });
       });
 

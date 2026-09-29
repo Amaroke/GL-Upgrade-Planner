@@ -6,7 +6,7 @@ export function TimerChipSkeleton() {
   return (
     <div
       aria-hidden="true"
-      className="flex shrink-0 animate-pulse items-center gap-2.5 rounded-2xl border border-white/8 py-2.5 pr-3 pl-2.5"
+      className="flex w-full shrink-0 animate-pulse items-center gap-2.5 rounded-2xl border sm:w-auto border-white/8 py-2.5 pr-3 pl-2.5"
       style={{ background: "rgba(255,255,255,0.03)" }}
     >
       <div className="h-9 w-9 shrink-0 rounded-full bg-white/10" />
@@ -41,7 +41,7 @@ export function TimerChip({
     <div
       role="group"
       aria-label={`${name} timer`}
-      className="relative flex shrink-0 items-center gap-2.5 rounded-2xl border py-2.5 pr-3 pl-2.5"
+      className="relative flex w-full shrink-0 items-center gap-2.5 rounded-2xl border py-2 pr-3 pl-2.5 sm:w-auto sm:py-2.5"
       style={{
         borderColor: isReady ? accent : "rgba(255,255,255,0.08)",
         background: "rgba(255,255,255,0.03)",
@@ -55,11 +55,13 @@ export function TimerChip({
         <img src={image} alt="" className="h-full w-full object-contain" />
       </div>
 
-      <div className="flex min-w-17 flex-col">
+      <div className="flex min-w-17 flex-1 flex-col sm:flex-none">
         <span className="text-xs font-semibold text-white">{name}</span>
         <span
           className="font-mono text-sm tabular-nums"
-          style={{ color: isReady ? accent : isRunning ? "#e9e6f5" : "rgba(255,255,255,0.3)" }}
+          style={{
+            color: isReady ? accent : isRunning ? "var(--color-ink)" : "rgba(255,255,255,0.45)",
+          }}
         >
           {isReady ? "Ready!" : remaining === null ? "--:--:--" : formatDuration(remaining)}
         </span>
@@ -73,7 +75,7 @@ export function TimerChip({
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed"
         style={{
           background: isReady ? accent : "rgba(255,255,255,0.08)",
-          color: isReady ? "#0a0716" : "#e9e6f5",
+          color: isReady ? "var(--color-night)" : "var(--color-ink)",
           opacity: isRunning ? 0.35 : 1,
         }}
       >
@@ -95,7 +97,7 @@ export function TimerChip({
         type="button"
         onClick={onOpenAdvanced}
         aria-label={`Advanced settings for ${name}`}
-        className="absolute -top-2 -right-2 flex h-5.5 w-5.5 items-center justify-center rounded-full border border-white/10 bg-[#17132b] text-white/50 transition-colors hover:bg-white/10 hover:text-white/90"
+        className="absolute -top-2 -right-2 flex h-5.5 w-5.5 items-center justify-center rounded-full border border-white/10 bg-panel text-white/50 transition-colors hover:bg-white/10 hover:text-white/90"
       >
         <GearIcon className="h-3 w-3" />
       </button>

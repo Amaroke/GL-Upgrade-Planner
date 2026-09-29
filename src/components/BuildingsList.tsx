@@ -78,13 +78,13 @@ type BuildingsListProps = {
 
 export function BuildingsList({ groups, starBaseLevel, buildings, onChange }: BuildingsListProps) {
   return (
-    <div className="mt-6 flex flex-col gap-6">
+    <div className="mt-5 flex flex-col gap-5">
       {groups.map(({ category, types }) => (
         <section key={category}>
-          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-white/50">
+          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-heading">
             {category}
           </h3>
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
             {types.map((type) => {
               const levels = buildings[type.id] ?? [];
               const limits = limitsAt(type, starBaseLevel);
@@ -95,13 +95,13 @@ export function BuildingsList({ groups, starBaseLevel, buildings, onChange }: Bu
                   key={type.id}
                   role="group"
                   aria-label={type.name}
-                  className={`flex flex-col gap-2 rounded-xl border border-white/10 p-3 ${
+                  className={`flex flex-col gap-2 rounded-lg bg-surface/5 px-3 py-2 ${
                     unlockLevel === null ? "" : "opacity-50"
                   }`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-medium text-[#e9e6f5]">{type.name}</span>
+                      <span className="text-sm font-medium text-ink">{type.name}</span>
                       {statuses.length > 0 && (
                         <ul aria-label="Statuses" className="flex gap-1">
                           {statuses.map((status) => (
@@ -118,7 +118,7 @@ export function BuildingsList({ groups, starBaseLevel, buildings, onChange }: Bu
                       )}
                     </div>
                     <span className="flex items-center gap-2">
-                      <span className="text-xs uppercase tracking-wide text-white/40">Owned</span>
+                      <span className="text-xs uppercase tracking-wide text-white/55">Owned</span>
                       <NumberField
                         label={`${type.name} owned`}
                         value={levels.length}
@@ -137,9 +137,6 @@ export function BuildingsList({ groups, starBaseLevel, buildings, onChange }: Bu
                   </div>
                   {levels.length > 0 && (
                     <div className="flex flex-col gap-2 border-t border-white/10 pt-2">
-                      <span className="text-xs uppercase tracking-wide text-white/40">
-                        {type.sharedLevel ? "Shared level" : "Levels"} (max {limits.maxLevel})
-                      </span>
                       <div className="flex flex-wrap gap-1.5">
                         {type.sharedLevel ? (
                           <LevelChip status={instanceStatus(limits, 0, sharedLevel(levels))}>

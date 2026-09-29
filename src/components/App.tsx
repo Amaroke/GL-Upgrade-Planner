@@ -56,7 +56,7 @@ function TimerChipsRow({
     <div
       role={isLoading ? "status" : undefined}
       aria-label={isLoading ? "Loading your timers" : undefined}
-      className="flex flex-col gap-3 sm:flex-1 sm:flex-row sm:flex-nowrap sm:justify-center sm:gap-4"
+      className="flex flex-col gap-2 sm:flex-1 sm:flex-row sm:flex-nowrap sm:justify-center sm:gap-4"
     >
       {isLoading
         ? DROPS.map((drop) => <TimerChipSkeleton key={drop.storageKey} />)
@@ -116,9 +116,9 @@ function App({
   const advancedDrop = DROPS.find((drop) => drop.storageKey === advancedDropKey) ?? null;
 
   return (
-    <div className="mx-auto flex min-h-svh max-w-5xl flex-col px-6 py-8">
+    <div className="mx-auto flex min-h-svh max-w-5xl flex-col px-3 py-5 sm:px-6 sm:py-8">
       <main className="flex flex-1 flex-col">
-        <div className="mb-8 flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+        <div className="mb-5 flex flex-col items-stretch gap-3 sm:mb-8 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
           <div className="hidden sm:block sm:shrink-0">
             <NotificationsControl permission={permission} requestPermission={requestPermission} />
           </div>
@@ -129,7 +129,7 @@ function App({
             onOpenAdvanced={setAdvancedDropKey}
           />
 
-          <div className="sm:shrink-0">
+          <div className="self-center sm:shrink-0">
             <AccountControl auth={auth} store={store} />
           </div>
         </div>

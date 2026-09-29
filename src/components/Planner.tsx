@@ -219,7 +219,7 @@ function ColonyPanel({
 
   return (
     <div role="tabpanel" aria-label={colony.name}>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <label htmlFor={selectId} className="text-sm text-white/60">
           Star Base level
         </label>
@@ -292,7 +292,7 @@ function ColonyPanel({
       <div
         role="tablist"
         aria-label={`${colony.name} view`}
-        className="mt-6 inline-flex rounded-lg border border-white/10 p-0.5 text-sm"
+        className="mt-5 inline-flex rounded-lg border border-accent/20 p-0.5 text-sm"
       >
         {COLONY_VIEWS.map(({ id, name }) => (
           <button
@@ -301,7 +301,7 @@ function ColonyPanel({
             role="tab"
             aria-selected={view === id}
             onClick={() => setView(id)}
-            className={`rounded-md px-4 py-1 ${view === id ? "bg-white/10 text-[#e9e6f5]" : "text-white/50 hover:text-white/80"}`}
+            className={`rounded-md px-4 py-1 ${view === id ? "bg-accent/15 text-ink" : "text-white/60 hover:text-white/85"}`}
           >
             {name}
           </button>
@@ -366,10 +366,10 @@ function ColonyTab({
   return (
     <div
       role="presentation"
-      className={`relative flex flex-col items-center gap-1 rounded-lg border px-2 pt-0.5 pb-1.5 transition-colors ${
+      className={`relative flex min-w-0 flex-col items-center gap-1 rounded-lg border px-1 pt-0.5 pb-1.5 sm:px-2 transition-colors ${
         selected
-          ? "border-white/20 bg-white/8"
-          : "border-transparent hover:border-white/10 hover:bg-white/4"
+          ? "border-accent/40 bg-accent/8"
+          : "border-transparent hover:border-accent/20 hover:bg-surface/6"
       } ${unlocked ? "" : "opacity-40"}`}
     >
       <button
@@ -380,7 +380,7 @@ function ColonyTab({
         disabled={!unlocked}
         onClick={onSelect}
         className={`w-full py-1 text-center text-sm font-medium transition-colors after:absolute after:inset-0 after:rounded-lg disabled:cursor-not-allowed ${
-          selected ? "text-[#e9e6f5]" : "text-white/40"
+          selected ? "text-ink" : "text-white/55"
         }`}
       >
         {colony.shortName}
@@ -410,7 +410,7 @@ function ColonyTab({
             style={{ width: `${progress.overall * 100}%` }}
           />
         </div>
-        <span className="text-[10px] leading-none text-white/50">SB {starBaseLevel}</span>
+        <span className="text-[10px] leading-none text-white/60">SB {starBaseLevel}</span>
       </div>
     </div>
   );
@@ -436,8 +436,8 @@ function PlannerSkeleton() {
 
 export function Planner({ isLoading = false, ...props }: PlannerProps & { isLoading?: boolean }) {
   return (
-    <section className="w-full flex-1 rounded-2xl border border-white/10 p-6">
-      <h2 className="mb-4 text-lg font-semibold text-white">Planner</h2>
+    <section className="w-full flex-1 rounded-2xl border border-accent/12 bg-linear-to-b from-[#0c1f45]/25 to-[#050f26]/25 p-3 sm:p-5 shadow-[inset_0_1px_0_rgb(160_225_255/0.06),0_20px_50px_rgb(0_0_0/0.35)]">
+      <h2 className="mb-4 text-lg font-semibold text-ink">Planner</h2>
       {isLoading ? <PlannerSkeleton /> : <LoadedPlanner {...props} />}
     </section>
   );
