@@ -13,9 +13,10 @@ import {
 import { constructionStep, startConstruction, withRemaining } from "../planner/constructions";
 import {
   appliedUnits,
+  idleLaboratory,
+  labColonyOf,
   startJob,
   withUnitLevel,
-  type LabColony,
   type LabKind,
 } from "../planner/laboratory";
 import { STAR_BASE_ID, type NextStep } from "../planner/nextSteps";
@@ -48,7 +49,6 @@ import {
 const DEFAULT_STAR_BASE_LEVEL = 1;
 const NO_BUILDINGS: ColonyBuildings = {};
 const NO_CONSTRUCTIONS: Construction[] = [];
-const NO_UNITS: UnitLevels = {};
 const WORKER_OPTIONS = [1, 2, 3, 4, 5];
 
 type ColonyView = "buildings" | "laboratory";
@@ -110,15 +110,7 @@ function ColonyPanel({
   const buildings = entry?.buildings ?? NO_BUILDINGS;
   const constructions = entry?.constructions ?? NO_CONSTRUCTIONS;
   const workers = entry?.workers ?? DEFAULT_WORKERS;
-  const units = entry?.units ?? NO_UNITS;
-  const laboratory: LabColony = {
-    starBaseLevel,
-    buildings,
-    constructions,
-    units,
-    research: entry?.research ?? null,
-    unlock: entry?.unlock ?? null,
-  };
+  const laboratory = labColonyOf(entry);
   const [view, setView] = useState<ColonyView>("buildings");
   const freeWorkers = workers - runningConstructions(constructions, now()).length;
   const [{ onlyToUpgrade, hideWallUpgrades }, updateOptions] = usePlannerOptions(
@@ -322,7 +314,9 @@ function ColonyPanel({
             colony={laboratory}
             now={now}
             onStart={labActions.onStart}
-            onLevel={(unitId, level) => save({ units: withUnitLevel(units, unitId, level) })}
+            onLevel={(unitId, level) =>
+              save({ units: withUnitLevel(laboratory.units, unitId, level) })
+            }
           />
         )}
       </div>
@@ -359,6 +353,7 @@ function ColonyTab({
   const entry = useColonyEntry(store, colony.id);
   const hasFreeWorker =
     unlocked && idleWorkers(catalog, colony.id, entry, hideWallUpgrades, now()) > 0;
+  const hasIdleLaboratory = unlocked && idleLaboratory(catalog, entry, now());
   const starBaseLevel = entry?.starBaseLevel ?? DEFAULT_STAR_BASE_LEVEL;
   const progress = colonyProgress(catalog, colony.id, entry?.buildings ?? NO_BUILDINGS);
   const overall = percent(progress.overall);
@@ -385,10 +380,14 @@ function ColonyTab({
       >
         {colony.shortName}
       </button>
-      {hasFreeWorker && (
+      {(hasFreeWorker || hasIdleLaboratory) && (
         <span
           role="img"
-          aria-label={`${colony.name} has a free Worker`}
+          aria-label={
+            hasFreeWorker
+              ? `${colony.name} has a free Worker`
+              : `${colony.name} has an idle Laboratory`
+          }
           className="pointer-events-none absolute top-1 right-1 h-2 w-2 rounded-full bg-amber-400"
         />
       )}
