@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Catalog, UnitType } from "./catalog";
-import { idleLaboratory, totalIdleLaboratories } from "./laboratory";
+import { idleLabSlots, totalIdleLabSlots } from "./laboratory";
 import { createMemoryColonyStore, type ColonyEntry, type LabJob } from "../store/colonyStore";
 
 const NOW = 1_000_000;
@@ -42,83 +42,69 @@ function colony(changes: Partial<ColonyEntry> = {}): ColonyEntry {
   };
 }
 
-describe("idleLaboratory", () => {
-  it("is idle when nothing runs and a step is left to start", () => {
-    expect(idleLaboratory(CATALOG, colony(), NOW)).toBe(true);
+const LAB_UPGRADE = {
+  kind: "upgrade" as const,
+  typeId: "laboratory",
+  instance: 1,
+  count: 1,
+  targetLevel: 2,
+  finishAt: NOW + 1,
+};
+
+describe("idleLabSlots", () => {
+  it("counts both slots when nothing runs and both have a step to start", () => {
+    expect(idleLabSlots(CATALOG, colony(), NOW)).toEqual(["research", "unlock"]);
   });
 
-  it("is idle with only a Research left to start", () => {
-    expect(idleLaboratory(CATALOG, colony({ units: { looter: 1 } }), NOW)).toBe(true);
+  it("counts only the Research slot when no Unlock is left", () => {
+    expect(idleLabSlots(CATALOG, colony({ units: { looter: 1 } }), NOW)).toEqual(["research"]);
   });
 
-  it("is idle with only an Unlock left to start", () => {
-    expect(idleLaboratory(CATALOG, colony({ units: { marine: 2 } }), NOW)).toBe(true);
+  it("counts only the Unlock slot when no Research is left", () => {
+    expect(idleLabSlots(CATALOG, colony({ units: { marine: 2 } }), NOW)).toEqual(["unlock"]);
   });
 
-  it("is not idle while a Research runs", () => {
+  it("counts the Unlock slot while a Research runs", () => {
     const entry = colony({ research: job("marine", 2, NOW + 1) });
-    expect(idleLaboratory(CATALOG, entry, NOW)).toBe(false);
+    expect(idleLabSlots(CATALOG, entry, NOW)).toEqual(["unlock"]);
   });
 
-  it("is not idle while an Unlock runs", () => {
+  it("counts the Research slot while an Unlock runs", () => {
     const entry = colony({ unlock: job("looter", 1, NOW + 1) });
-    expect(idleLaboratory(CATALOG, entry, NOW)).toBe(false);
+    expect(idleLabSlots(CATALOG, entry, NOW)).toEqual(["research"]);
   });
 
-  it("is not idle when nothing is left to start", () => {
-    const entry = colony({ units: { marine: 2, looter: 2 } });
-    expect(idleLaboratory(CATALOG, entry, NOW)).toBe(false);
-  });
-
-  it("is not idle without a Laboratory", () => {
-    const entry = colony({ buildings: { "training-camp": [1] } });
-    expect(idleLaboratory(CATALOG, entry, NOW)).toBe(false);
-  });
-
-  it("is not idle on a Colony never set", () => {
-    expect(idleLaboratory(CATALOG, null, NOW)).toBe(false);
-  });
-
-  it("is not idle while the Laboratory is upgraded and only Research is left", () => {
-    const entry = colony({
-      units: { looter: 1 },
-      constructions: [
-        {
-          kind: "upgrade",
-          typeId: "laboratory",
-          instance: 1,
-          count: 1,
-          targetLevel: 2,
-          finishAt: NOW + 1,
-        },
-      ],
-    });
-    expect(idleLaboratory(CATALOG, entry, NOW)).toBe(false);
-  });
-
-  it("is idle once its job is Finished and another step is left in a free slot", () => {
+  it("counts no slot holding a Finished job, already counted as Finished", () => {
     const entry = colony({ research: job("marine", 2, NOW) });
-    expect(idleLaboratory(CATALOG, entry, NOW)).toBe(true);
+    expect(idleLabSlots(CATALOG, entry, NOW)).toEqual(["unlock"]);
   });
 
-  it("is not idle when the only free slot has nothing to start", () => {
-    const entry = colony({ units: { looter: 2 }, research: job("marine", 2, NOW) });
-    expect(idleLaboratory(CATALOG, entry, NOW)).toBe(false);
+  it("counts none when nothing is left to start", () => {
+    const entry = colony({ units: { marine: 2, looter: 2 } });
+    expect(idleLabSlots(CATALOG, entry, NOW)).toEqual([]);
+  });
+
+  it("counts none without a Laboratory", () => {
+    const entry = colony({ buildings: { "training-camp": [1] } });
+    expect(idleLabSlots(CATALOG, entry, NOW)).toEqual([]);
+  });
+
+  it("counts none on a Colony never set", () => {
+    expect(idleLabSlots(CATALOG, null, NOW)).toEqual([]);
+  });
+
+  it("skips the Research slot while the Laboratory is upgraded", () => {
+    const entry = colony({ constructions: [LAB_UPGRADE] });
+    expect(idleLabSlots(CATALOG, entry, NOW)).toEqual(["unlock"]);
   });
 });
 
-describe("totalIdleLaboratories", () => {
-  it("counts each unlocked Colony with an idle Laboratory", () => {
+describe("totalIdleLabSlots", () => {
+  it("adds the idle slots of every unlocked Colony", () => {
     const store = createMemoryColonyStore();
     store.set("main", colony({ buildings: { ...colony().buildings, observatory: [1] } }));
-    store.set("colony-1", colony());
+    store.set("colony-1", colony({ units: { looter: 1 } }));
     store.set("colony-2", colony());
-    expect(totalIdleLaboratories(CATALOG, store, NOW)).toBe(2);
-  });
-
-  it("counts a Laboratory with a Finished job once, not as idle too", () => {
-    const store = createMemoryColonyStore();
-    store.set("main", colony({ research: job("marine", 2, NOW) }));
-    expect(totalIdleLaboratories(CATALOG, store, NOW)).toBe(0);
+    expect(totalIdleLabSlots(CATALOG, store, NOW)).toBe(3);
   });
 });

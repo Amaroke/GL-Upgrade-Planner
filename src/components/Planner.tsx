@@ -13,7 +13,7 @@ import {
 import { constructionStep, startConstruction, withRemaining } from "../planner/constructions";
 import {
   appliedUnits,
-  idleLaboratory,
+  idleLabSlots,
   labColonyOf,
   startJob,
   withUnitLevel,
@@ -353,7 +353,7 @@ function ColonyTab({
   const entry = useColonyEntry(store, colony.id);
   const hasFreeWorker =
     unlocked && idleWorkers(catalog, colony.id, entry, hideWallUpgrades, now()) > 0;
-  const hasIdleLaboratory = unlocked && idleLaboratory(catalog, entry, now());
+  const hasIdleLaboratory = unlocked && idleLabSlots(catalog, entry, now()).length > 0;
   const starBaseLevel = entry?.starBaseLevel ?? DEFAULT_STAR_BASE_LEVEL;
   const progress = colonyProgress(catalog, colony.id, entry?.buildings ?? NO_BUILDINGS);
   const overall = percent(progress.overall);

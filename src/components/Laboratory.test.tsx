@@ -666,23 +666,31 @@ describe("Laboratory", () => {
       return screen.queryByRole("img", { name: "Main planet has an idle Laboratory" });
     }
 
-    it("shows the idle Laboratory dot while nothing runs and a step is left", async () => {
+    it("shows the idle Laboratory dot while a slot is free with a step to start", async () => {
       renderApp(seed(BUSY_WORKER));
       expect(idleDot()).toBeInTheDocument();
 
       await click("Start Unlock Looter", slot("Unlock"));
+      expect(idleDot()).toBeInTheDocument();
+
+      await click("Start Research Marine to level 2", slot("Research"));
       expect(idleDot()).toBeNull();
 
-      passTime(HOUR);
+      await click("Cancel Research Marine to level 2", slot("Research"));
+      await click("Confirm cancel Research Marine to level 2", slot("Research"));
       expect(idleDot()).toBeInTheDocument();
     });
 
-    it("counts an idle Laboratory in the tab title", async () => {
+    it("counts the idle Research and Unlock slots separately in the tab title", async () => {
       document.title = "GL Upgrade Planner";
       renderApp(seed(BUSY_WORKER));
-      expect(document.title).toBe("(1) GL Upgrade Planner");
+      expect(document.title).toBe("(2) GL Upgrade Planner");
 
       await click("Start Research Marine to level 2", slot("Research"));
+      passTime(0);
+      expect(document.title).toBe("(1) GL Upgrade Planner");
+
+      await click("Start Unlock Looter", slot("Unlock"));
       passTime(0);
       expect(document.title).toBe("GL Upgrade Planner");
     });

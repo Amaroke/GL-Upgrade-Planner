@@ -13,7 +13,7 @@ import { useReadyTitle } from "../hooks/useReadyTitle";
 import { useReadyNotifications } from "../hooks/useReadyNotifications";
 import { CATALOG, type Catalog } from "../planner/catalog";
 import { constructionNotices } from "../planner/constructions";
-import { labNotices, totalIdleLaboratories } from "../planner/laboratory";
+import { labNotices, totalIdleLabSlots } from "../planner/laboratory";
 import { totalIdleWorkers } from "../planner/workers";
 import type { LoadingStore } from "../store/accountSync";
 import { createMemoryColonyStore, type ColonyStore } from "../store/colonyStore";
@@ -106,7 +106,7 @@ function App({
             colonies,
             settings.get(PLANNER_SETTINGS_KEY)?.hideWallUpgrades ?? false,
             now(),
-          ) + totalIdleLaboratories(catalog, colonies, now()),
+          ) + totalIdleLabSlots(catalog, colonies, now()),
     [catalog, colonies, settings, isLoading, now],
   );
   useReadyTitle(readNotices, now, readIdleWorkers);
