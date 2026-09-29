@@ -629,4 +629,93 @@ describe("Laboratory", () => {
       expect(screen.queryByRole("img", { name: "Main planet has a free Worker" })).toBeNull();
     });
   });
+
+  describe("Finished Research and Unlock", () => {
+    type Sent = { title: string; options?: NotificationOptions };
+
+    function installFakeNotification() {
+      const sent: Sent[] = [];
+      class FakeNotification {
+        static permission: NotificationPermission = "granted";
+        static requestPermission = async () => "granted" as const;
+        constructor(title: string, options?: NotificationOptions) {
+          sent.push({ title, options });
+        }
+      }
+      vi.stubGlobal("Notification", FakeNotification);
+      return sent;
+    }
+
+    function titleCount() {
+      return Number(/^\((\d+)\) /.exec(document.title)?.[1] ?? 0);
+    }
+
+    beforeEach(() => {
+      document.title = "GL Upgrade Planner";
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it("counts a Finished Research and a Finished Unlock in the tab title", async () => {
+      renderApp();
+      await click("Start Research Marine to level 2", slot("Research"));
+      await click("Start Unlock Looter", slot("Unlock"));
+      const before = titleCount();
+
+      passTime(30 * MINUTE);
+      expect(titleCount()).toBe(before + 1);
+
+      passTime(2 * HOUR);
+      expect(titleCount()).toBe(before + 2);
+    });
+
+    it("drops the title count once the job is Done or cancelled", async () => {
+      renderApp();
+      await click("Start Research Marine to level 2", slot("Research"));
+      await click("Start Unlock Looter", slot("Unlock"));
+      passTime(2 * HOUR);
+      const finished = titleCount();
+
+      await click("Done Unlock Looter", slot("Unlock"));
+      passTime(0);
+      expect(titleCount()).toBe(finished - 1);
+
+      await click("Cancel Research Marine to level 2", slot("Research"));
+      await click("Confirm cancel Research Marine to level 2", slot("Research"));
+      passTime(0);
+      expect(titleCount()).toBe(finished - 2);
+    });
+
+    it("sends one notification when a Research or an Unlock becomes Finished", async () => {
+      const sent = installFakeNotification();
+      renderApp();
+      await click("Start Research Marine to level 2", slot("Research"));
+      await click("Start Unlock Looter", slot("Unlock"));
+      passTime(0);
+
+      passTime(30 * MINUTE);
+      passTime(2 * HOUR);
+      passTime(0);
+
+      expect(sent).toEqual([
+        {
+          title: "Unlock Looter is finished",
+          options: { body: "On Main planet.", tag: "lab-main-unlock-looter-1" },
+        },
+        {
+          title: "Research Marine to level 2 is finished",
+          options: { body: "On Main planet.", tag: "lab-main-research-marine-2" },
+        },
+      ]);
+    });
+
+    it("sends nothing for a job already Finished at load or once it is Done", async () => {
+      const sent = installFakeNotification();
+      renderApp(seed({ unlock: { unitId: "looter", targetLevel: 1, finishAt: NOW - MINUTE } }));
+      passTime(0);
+      await click("Done Unlock Looter", slot("Unlock"));
+      passTime(HOUR);
+
+      expect(sent).toHaveLength(0);
+    });
+  });
 });

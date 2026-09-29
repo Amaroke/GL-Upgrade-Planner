@@ -13,6 +13,7 @@ import { useReadyTitle } from "../hooks/useReadyTitle";
 import { useReadyNotifications } from "../hooks/useReadyNotifications";
 import { CATALOG, type Catalog } from "../planner/catalog";
 import { constructionNotices } from "../planner/constructions";
+import { labNotices } from "../planner/laboratory";
 import { totalIdleWorkers } from "../planner/workers";
 import type { LoadingStore } from "../store/accountSync";
 import { createMemoryColonyStore, type ColonyStore } from "../store/colonyStore";
@@ -86,7 +87,14 @@ function App({
   const colonies = colonyStore ?? fallbackColonyStore;
   const settings = settingsStore ?? fallbackSettingsStore;
   const readNotices = useCallback(
-    () => (isLoading ? [] : [...dropNotices(store), ...constructionNotices(catalog, colonies)]),
+    () =>
+      isLoading
+        ? []
+        : [
+            ...dropNotices(store),
+            ...constructionNotices(catalog, colonies),
+            ...labNotices(catalog, colonies),
+          ],
     [store, catalog, colonies, isLoading],
   );
   const readIdleWorkers = useCallback(

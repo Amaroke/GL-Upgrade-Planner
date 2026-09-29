@@ -1,6 +1,14 @@
 import type { Catalog, UnitType } from "./catalog";
+import { COLONIES } from "./colonies";
 import { parseDuration } from "./nextSteps";
-import type { ColonyBuildings, Construction, LabJob, UnitLevels } from "../store/colonyStore";
+import type { Notice } from "../hooks/useReadyNotifications";
+import type {
+  ColonyBuildings,
+  ColonyStore,
+  Construction,
+  LabJob,
+  UnitLevels,
+} from "../store/colonyStore";
 
 export const LABORATORY_ID = "laboratory";
 export const MEDAL_LEVEL = 7;
@@ -134,4 +142,20 @@ export function appliedUnits(catalog: Catalog, colony: LabColony, job: LabJob): 
 export function withUnitLevel(units: UnitLevels, unitId: string, level: number): UnitLevels {
   const { [unitId]: _, ...rest } = units;
   return level > 0 ? { ...rest, [unitId]: level } : rest;
+}
+
+export function labNotices(catalog: Catalog, store: ColonyStore): Notice[] {
+  return COLONIES.flatMap((colony) => {
+    const entry = store.get(colony.id);
+    return (["research", "unlock"] as const).flatMap((kind) => {
+      const job = entry?.[kind];
+      if (!job) return [];
+      return {
+        key: `lab-${colony.id}-${kind}-${job.unitId}-${job.targetLevel}`,
+        readyAt: job.finishAt,
+        title: `${jobLabel(catalog, kind, job)} is finished`,
+        body: `On ${colony.name}.`,
+      };
+    });
+  });
 }
