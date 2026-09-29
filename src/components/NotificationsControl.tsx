@@ -55,7 +55,7 @@ export function NotificationsControl({ permission, requestPermission }: Notifica
           label={result === "granted" ? "Notifications enabled" : "Notifications blocked"}
           onClose={() => setResult(null)}
         >
-          <div className="rounded-2xl border border-white/10 bg-[#12101f] p-6 text-center text-sm text-white/70">
+          <div className="rounded-2xl border border-white/10 bg-panel p-6 text-center text-sm text-white/70">
             {result === "granted" ? (
               <p>
                 Notifications enabled. You will be notified when a Drop is ready or a Construction

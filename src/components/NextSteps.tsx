@@ -24,7 +24,13 @@ const ORDER_LABELS: Record<StepOrder, string> = {
 const ALL_CATEGORIES = "all";
 
 export const ROW_BUTTON =
-  "rounded-md border border-white/15 px-2 py-0.5 text-xs text-white/70 hover:bg-white/10";
+  "rounded-md border border-white/15 px-2 py-0.5 text-xs text-white/75 transition-colors hover:bg-white/10";
+
+export const START_BUTTON =
+  "rounded-md border border-green-400/50 bg-green-500/15 px-2 py-0.5 text-xs text-green-200 transition-colors hover:bg-green-500/25";
+
+export const DONE_BUTTON =
+  "rounded-md border border-accent/40 px-2 py-0.5 text-xs text-sky-100 transition-colors hover:bg-accent/15";
 
 export function DurationEditor({
   action,
@@ -71,7 +77,7 @@ export function DurationEditor({
           if (event.key === "Enter") confirm();
           if (event.key === "Escape") onBack();
         }}
-        className="w-24 rounded-md border border-white/15 bg-[#120c24] px-2 py-0.5 text-xs text-white"
+        className="w-24 rounded-md border border-white/15 bg-deep px-2 py-0.5 text-xs text-white"
       />
       <button
         type="button"
@@ -114,8 +120,8 @@ function StepRow({
   const label = stepLabel(step);
   const { seconds } = step;
   return (
-    <li className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 px-3 py-2">
-      <span className="text-sm text-[#e9e6f5]">{label}</span>
+    <li className="flex flex-wrap items-center gap-3 rounded-lg bg-surface/5 px-3 py-1.5 transition-colors hover:bg-surface/9">
+      <span className="text-sm text-ink">{label}</span>
       <span className="ml-auto text-xs text-white/60">{step.time ?? "time unknown"}</span>
       {isAskingDuration ? (
         <DurationEditor
@@ -136,7 +142,7 @@ function StepRow({
             disabled={!canStart}
             title={canStart ? undefined : "No free Worker"}
             onClick={() => (seconds === null ? setIsAskingDuration(true) : onStart(step, seconds))}
-            className={`${ROW_BUTTON} disabled:cursor-not-allowed disabled:opacity-40`}
+            className={`${START_BUTTON} disabled:cursor-not-allowed disabled:opacity-40`}
           >
             Start
           </button>
@@ -144,7 +150,7 @@ function StepRow({
             type="button"
             aria-label={`Done ${label}`}
             onClick={() => onDone(step)}
-            className={ROW_BUTTON}
+            className={DONE_BUTTON}
           >
             Done
           </button>
@@ -177,7 +183,7 @@ export function RunningJob({
   return (
     <>
       <span
-        className={`ml-auto text-xs tabular-nums ${remaining === 0 ? "font-semibold text-green-300" : "text-sky-200"}`}
+        className={`ml-auto text-xs tabular-nums ${remaining === 0 ? "font-semibold text-green-300" : "text-accent"}`}
       >
         {remaining === 0 ? "Finished" : formatCountdown(remaining)}
       </span>
@@ -227,7 +233,7 @@ export function RunningJob({
             type="button"
             aria-label={`Done ${label}`}
             onClick={onDone}
-            className={ROW_BUTTON}
+            className={DONE_BUTTON}
           >
             Done
           </button>
@@ -262,8 +268,8 @@ function ConstructionRow({
 }) {
   const label = stepLabel(step);
   return (
-    <li className="flex flex-wrap items-center gap-3 rounded-xl border border-sky-400/40 bg-sky-400/5 px-3 py-2">
-      <span className="text-sm text-[#e9e6f5]">{label}</span>
+    <li className="flex flex-wrap items-center gap-3 rounded-lg bg-accent/8 px-3 py-1.5 shadow-[inset_2px_0_0_var(--color-accent)]">
+      <span className="text-sm text-ink">{label}</span>
       <RunningJob
         label={label}
         noun="Construction"
@@ -332,9 +338,9 @@ export function NextSteps({
   const shown = expanded ? rows : rows.slice(0, COLLAPSED_COUNT);
 
   return (
-    <section aria-label="Next steps" className="mt-6">
+    <section aria-label="Next steps" className="mt-5">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-white/50">Next steps</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-heading">Next steps</h3>
         <span className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-2 text-sm text-white/60">
             <input
@@ -385,7 +391,7 @@ export function NextSteps({
       {rows.length === 0 ? (
         <p className="text-sm text-white/60">Nothing to build or upgrade</p>
       ) : (
-        <ul aria-label="Next steps" className="flex flex-col gap-2">
+        <ul aria-label="Next steps" className="flex flex-col gap-1.5">
           {shown.map((row) =>
             row.construction ? (
               <ConstructionRow
@@ -414,9 +420,21 @@ export function NextSteps({
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
-          className="mt-2 text-sm text-white/60 underline"
+          className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg bg-surface/4 py-1.5 text-sm text-sky-200 transition-colors hover:bg-surface/9 hover:text-white"
         >
           {expanded ? "Show fewer steps" : `Show all ${rows.length} steps`}
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`h-4 w-4 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+          >
+            <path d="M6 8l4 4 4-4" />
+          </svg>
         </button>
       )}
     </section>
