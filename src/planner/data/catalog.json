@@ -1774,6 +1774,11 @@
           "level": 6,
           "laboratory": 2,
           "time": "12h"
+        },
+        {
+          "level": 7,
+          "laboratory": 2,
+          "time": "18h"
         }
       ]
     },
@@ -1808,6 +1813,11 @@
         },
         {
           "level": 6,
+          "laboratory": 2,
+          "time": "1d"
+        },
+        {
+          "level": 7,
           "laboratory": 2,
           "time": "1d"
         }
@@ -1846,6 +1856,11 @@
           "level": 6,
           "laboratory": 2,
           "time": "12h"
+        },
+        {
+          "level": 7,
+          "laboratory": 2,
+          "time": "18h"
         }
       ]
     },
@@ -1882,6 +1897,11 @@
           "level": 6,
           "laboratory": 3,
           "time": "1d 6h"
+        },
+        {
+          "level": 7,
+          "laboratory": 3,
+          "time": "1d 21h"
         }
       ]
     },
@@ -1918,6 +1938,11 @@
           "level": 6,
           "laboratory": 4,
           "time": "1d 12h"
+        },
+        {
+          "level": 7,
+          "laboratory": 4,
+          "time": "2d 6h"
         }
       ]
     },
@@ -1954,6 +1979,11 @@
           "level": 6,
           "laboratory": 6,
           "time": "2d"
+        },
+        {
+          "level": 7,
+          "laboratory": 6,
+          "time": "3d"
         }
       ]
     },
@@ -1990,6 +2020,11 @@
           "level": 6,
           "laboratory": 6,
           "time": "4d 2h"
+        },
+        {
+          "level": 7,
+          "laboratory": 6,
+          "time": "6d 3h"
         }
       ]
     },
@@ -2026,6 +2061,11 @@
           "level": 6,
           "laboratory": 3,
           "time": "3d 3h"
+        },
+        {
+          "level": 7,
+          "laboratory": 3,
+          "time": "3d 10h"
         }
       ]
     },
@@ -2062,6 +2102,11 @@
           "level": 6,
           "laboratory": 4,
           "time": "2d 15h"
+        },
+        {
+          "level": 7,
+          "laboratory": 4,
+          "time": "2d 22h"
         }
       ]
     },
@@ -2098,6 +2143,11 @@
           "level": 6,
           "laboratory": 4,
           "time": "3d 3h"
+        },
+        {
+          "level": 7,
+          "laboratory": 4,
+          "time": "3d 7h"
         }
       ]
     },
@@ -2134,6 +2184,11 @@
           "level": 6,
           "laboratory": 6,
           "time": "5d 11h"
+        },
+        {
+          "level": 7,
+          "laboratory": 6,
+          "time": "1w 1d"
         }
       ]
     },
@@ -2170,6 +2225,11 @@
           "level": 6,
           "laboratory": 5,
           "time": "2d"
+        },
+        {
+          "level": 7,
+          "laboratory": 5,
+          "time": "4d"
         }
       ]
     },
@@ -2206,6 +2266,11 @@
           "level": 6,
           "laboratory": 4,
           "time": "6d 12h"
+        },
+        {
+          "level": 7,
+          "laboratory": 4,
+          "time": "1d 16h"
         }
       ]
     },
@@ -2242,6 +2307,11 @@
           "level": 6,
           "laboratory": 6,
           "time": "4d 12h"
+        },
+        {
+          "level": 7,
+          "laboratory": 6,
+          "time": "1w 3d"
         }
       ]
     },
@@ -2278,6 +2348,11 @@
           "level": 6,
           "laboratory": 6,
           "time": "4d 12h"
+        },
+        {
+          "level": 7,
+          "laboratory": 6,
+          "time": "1w 2d"
         }
       ]
     },
@@ -2314,6 +2389,11 @@
           "level": 6,
           "laboratory": 4,
           "time": "1w 1d"
+        },
+        {
+          "level": 7,
+          "laboratory": 4,
+          "time": "2w"
         }
       ]
     }
