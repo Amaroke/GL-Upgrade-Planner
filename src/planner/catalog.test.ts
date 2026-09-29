@@ -176,13 +176,20 @@ describe("catalog", () => {
       ]);
     });
 
-    it("has an entry for every level from 2 to 6", () => {
+    it("has an entry for every level from 2 to 7", () => {
       for (const unit of CATALOG.units) {
-        expect(unit.levels.map((entry) => entry.level)).toEqual([2, 3, 4, 5, 6]);
+        expect(unit.levels.map((entry) => entry.level)).toEqual([2, 3, 4, 5, 6, 7]);
         for (const entry of unit.levels) {
           assertTimeParseable(entry.time);
           expect(Object.keys(entry)).toEqual(["level", "laboratory", "time"]);
         }
+      }
+    });
+
+    it("requires for level 7 the Laboratory level of level 6", () => {
+      for (const unit of CATALOG.units) {
+        const [sixth, seventh] = unit.levels.slice(-2);
+        expect(seventh.laboratory).toBe(sixth.laboratory);
       }
     });
 
