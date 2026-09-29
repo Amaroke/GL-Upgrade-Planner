@@ -16,6 +16,7 @@ function type(id: string, category: BuildingType["category"], mainOnly = false):
 const CATALOG: Catalog = {
   version: 1,
   starBase: [],
+  units: [],
   buildings: [
     type("tower", "Tower"),
     type("observatory", "Resource", true),

@@ -160,4 +160,35 @@ describe("createFirestoreColonyStore", () => {
     await waitFor(reader, "main", 700);
     expect(reader.get("main")).toEqual(entry);
   });
+
+  it("stores the Unit levels, the Research and the Unlock and reads them back", async () => {
+    const db = firestoreOf(testEnv.authenticatedContext("player-1"));
+    const writer = createStore(db);
+    const entry: ColonyEntry = {
+      ...ENTRY,
+      units: { marine: 3, looter: 1 },
+      research: { unitId: "marine", targetLevel: 4, finishAt: 1790000000000 },
+      unlock: { unitId: "bazooka", targetLevel: 1, finishAt: 1790000000500 },
+      updatedAt: 800,
+    };
+
+    writer.set("main", entry);
+    writer.syncStatus.saveNow();
+    await new Promise<void>((resolve) => {
+      const unsubscribe = writer.syncStatus.subscribe(() => {
+        if (writer.syncStatus.getStatus() !== "synced") return;
+        unsubscribe();
+        resolve();
+      });
+    });
+
+    const snapshot = await getDoc(doc(db, "users/player-1/colonies/main"));
+    expect(snapshot.data()?.units).toEqual({ marine: 3, looter: 1 });
+    expect(snapshot.data()?.research).toBe("marine 4 1790000000000");
+    expect(snapshot.data()?.unlock).toBe("bazooka 1 1790000000500");
+    const reader = createStore(firestoreOf(testEnv.authenticatedContext("player-1")));
+    reader.get("main");
+    await waitFor(reader, "main", 800);
+    expect(reader.get("main")).toEqual(entry);
+  });
 });

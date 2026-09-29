@@ -15,11 +15,22 @@ export type Construction = {
   finishAt: number;
 };
 
+export type UnitLevels = Record<string, number>;
+
+export type LabJob = {
+  unitId: string;
+  targetLevel: number;
+  finishAt: number;
+};
+
 export type ColonyEntry = {
   starBaseLevel: number;
   buildings: ColonyBuildings;
   constructions?: Construction[];
   workers?: number;
+  units?: UnitLevels;
+  research?: LabJob;
+  unlock?: LabJob;
   updatedAt: number;
 };
 
@@ -48,6 +59,17 @@ function isConstruction(value: unknown): value is Construction {
   );
 }
 
+function isUnitLevels(value: unknown): value is UnitLevels {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  return Object.values(value).every((level) => Number.isInteger(level) && level >= 1);
+}
+
+function isLabJob(value: unknown): value is LabJob {
+  if (typeof value !== "object" || value === null) return false;
+  const { unitId, targetLevel, finishAt } = value as Record<string, unknown>;
+  return typeof unitId === "string" && [targetLevel, finishAt].every(isFiniteNumber);
+}
+
 function isWorkerCount(value: unknown): value is number {
   return Number.isInteger(value) && (value as number) >= 1;
 }
@@ -65,15 +87,24 @@ export function toColonyEntry(value: unknown): ColonyEntry | null {
     buildings = {},
     constructions,
     workers,
+    units,
+    research,
+    unlock,
     updatedAt,
   } = value as Record<string, unknown>;
   if (!isFiniteNumber(starBaseLevel) || !isFiniteNumber(updatedAt)) return null;
   if (!isColonyBuildings(buildings)) return null;
   if (workers !== undefined && !isWorkerCount(workers)) return null;
+  if (units !== undefined && !isUnitLevels(units)) return null;
+  if (research !== undefined && !isLabJob(research)) return null;
+  if (unlock !== undefined && !isLabJob(unlock)) return null;
   const entry: ColonyEntry = {
     starBaseLevel,
     buildings: sortedDescending(buildings),
     ...(workers === undefined ? {} : { workers }),
+    ...(units === undefined ? {} : { units }),
+    ...(research === undefined ? {} : { research }),
+    ...(unlock === undefined ? {} : { unlock }),
     updatedAt,
   };
   if (constructions === undefined) return entry;

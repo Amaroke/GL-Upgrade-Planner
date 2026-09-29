@@ -4,6 +4,7 @@ import {
   type ColonyEntry,
   type ColonyStore,
   type Construction,
+  type LabJob,
 } from "./colonyStore";
 import { createFirestoreDocumentStore, type DocumentCodec } from "./firestoreDocumentStore";
 import type { SendScheduler, SyncStatusStore } from "./sendScheduler";
@@ -32,12 +33,20 @@ function decodeConstruction(value: unknown): unknown {
   return { kind, typeId, instance, count, targetLevel, finishAt };
 }
 
+function encodeLabJob({ unitId, targetLevel, finishAt }: LabJob): string {
+  return [unitId, targetLevel, finishAt].join(" ");
+}
+
+function decodeLabJob(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  const [unitId, targetLevel, finishAt] = value.split(" ");
+  return { unitId, targetLevel: Number(targetLevel), finishAt: Number(finishAt) };
+}
+
 function fromDocument(data: unknown): ColonyEntry | null {
   if (typeof data !== "object" || data === null) return null;
-  const { starBase, buildings, constructions, workers, updatedAt } = data as Record<
-    string,
-    unknown
-  >;
+  const { starBase, buildings, constructions, workers, units, research, unlock, updatedAt } =
+    data as Record<string, unknown>;
   return toColonyEntry({
     starBaseLevel: starBase,
     buildings,
@@ -45,19 +54,34 @@ function fromDocument(data: unknown): ColonyEntry | null {
       ? constructions.map(decodeConstruction)
       : constructions,
     workers,
+    units,
+    research: decodeLabJob(research),
+    unlock: decodeLabJob(unlock),
     updatedAt,
   });
 }
 
 export const COLONY_CODEC: DocumentCodec<ColonyEntry> = {
   fromDocument,
-  toDocument: ({ starBaseLevel, buildings, constructions, workers, updatedAt }) => ({
+  toDocument: ({
+    starBaseLevel,
+    buildings,
+    constructions,
+    workers,
+    units,
+    research,
+    unlock,
+    updatedAt,
+  }) => ({
     starBase: starBaseLevel,
     buildings,
     ...(constructions && constructions.length > 0
       ? { constructions: constructions.map(encodeConstruction) }
       : {}),
     ...(workers === undefined ? {} : { workers }),
+    ...(units === undefined ? {} : { units }),
+    ...(research === undefined ? {} : { research: encodeLabJob(research) }),
+    ...(unlock === undefined ? {} : { unlock: encodeLabJob(unlock) }),
     updatedAt,
   }),
 };

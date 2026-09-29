@@ -132,4 +132,71 @@ describe("catalog", () => {
       expect(observatory?.mainOnly).toBe(true);
     });
   });
+
+  describe("Unit types", () => {
+    const laboratory = CATALOG.buildings.find((type) => type.id === "laboratory");
+    const highestLaboratory = Math.max(...(laboratory?.unlocks ?? []).map((u) => u.maxLevel));
+
+    it("holds the 16 Unit types of the Laboratory", () => {
+      expect(CATALOG.units).toHaveLength(16);
+    });
+
+    it("has unique stable slug identifiers and a name", () => {
+      const ids = CATALOG.units.map((unit) => unit.id);
+      expect(new Set(ids).size).toBe(ids.length);
+      for (const unit of CATALOG.units) {
+        expect(unit.id).toMatch(SLUG);
+        expect(unit.name.length).toBeGreaterThan(0);
+      }
+    });
+
+    it("has a valid category", () => {
+      for (const unit of CATALOG.units) {
+        expect(["Infantry", "Vehicle", "Aircraft"]).toContain(unit.category);
+      }
+    });
+
+    it("is unlocked by an existing Building type at an existing Star Base level", () => {
+      const buildingIds = CATALOG.buildings.map((type) => type.id);
+      const starBaseLevels = CATALOG.starBase.map((entry) => entry.level);
+      for (const unit of CATALOG.units) {
+        expect(buildingIds).toContain(unit.building);
+        expect(starBaseLevels).toContain(unit.starBase);
+      }
+    });
+
+    it("has an Unlock time unless the Unit type starts unlocked", () => {
+      for (const unit of CATALOG.units) {
+        expect(typeof unit.startsUnlocked).toBe("boolean");
+        if (unit.startsUnlocked) expect(unit.unlockTime).toBeNull();
+        assertTimeParseable(unit.unlockTime);
+      }
+      expect(CATALOG.units.filter((unit) => unit.startsUnlocked).map((unit) => unit.id)).toEqual([
+        "marine",
+      ]);
+    });
+
+    it("has an entry for every level from 2 to 6", () => {
+      for (const unit of CATALOG.units) {
+        expect(unit.levels.map((entry) => entry.level)).toEqual([2, 3, 4, 5, 6]);
+        for (const entry of unit.levels) {
+          assertTimeParseable(entry.time);
+          expect(Object.keys(entry)).toEqual(["level", "laboratory", "time"]);
+        }
+      }
+    });
+
+    it("never lowers the Laboratory level required as the Unit level rises", () => {
+      for (const unit of CATALOG.units) {
+        unit.levels.forEach((entry, index) => {
+          expect(Number.isInteger(entry.laboratory)).toBe(true);
+          expect(entry.laboratory).toBeGreaterThanOrEqual(1);
+          expect(entry.laboratory).toBeLessThanOrEqual(highestLaboratory);
+          if (index > 0) {
+            expect(entry.laboratory).toBeGreaterThanOrEqual(unit.levels[index - 1].laboratory);
+          }
+        });
+      }
+    });
+  });
 });

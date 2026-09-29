@@ -23,10 +23,10 @@ const ORDER_LABELS: Record<StepOrder, string> = {
 
 const ALL_CATEGORIES = "all";
 
-const ROW_BUTTON =
+export const ROW_BUTTON =
   "rounded-md border border-white/15 px-2 py-0.5 text-xs text-white/70 hover:bg-white/10";
 
-function DurationEditor({
+export function DurationEditor({
   action,
   label,
   inputLabel,
@@ -154,15 +154,17 @@ function StepRow({
   );
 }
 
-function ConstructionRow({
-  step,
+export function RunningJob({
+  label,
+  noun,
   finishAt,
   now,
   onDone,
   onCancel,
   onEdit,
 }: {
-  step: NextStep;
+  label: string;
+  noun: string;
   finishAt: number;
   now: () => number;
   onDone: () => void;
@@ -171,11 +173,9 @@ function ConstructionRow({
 }) {
   useTick();
   const [mode, setMode] = useState<"idle" | "confirmingCancel" | "editing">("idle");
-  const label = stepLabel(step);
   const remaining = Math.max(0, finishAt - now());
   return (
-    <li className="flex flex-wrap items-center gap-3 rounded-xl border border-sky-400/40 bg-sky-400/5 px-3 py-2">
-      <span className="text-sm text-[#e9e6f5]">{label}</span>
+    <>
       <span
         className={`ml-auto text-xs tabular-nums ${remaining === 0 ? "font-semibold text-green-300" : "text-sky-200"}`}
       >
@@ -194,7 +194,7 @@ function ConstructionRow({
       )}
       {mode === "confirmingCancel" && (
         <>
-          <span className="text-xs text-white/70">Cancel this Construction?</span>
+          <span className="text-xs text-white/70">Cancel this {noun}?</span>
           <button
             type="button"
             aria-label={`Confirm cancel ${label}`}
@@ -241,6 +241,38 @@ function ConstructionRow({
           </button>
         </>
       )}
+    </>
+  );
+}
+
+function ConstructionRow({
+  step,
+  finishAt,
+  now,
+  onDone,
+  onCancel,
+  onEdit,
+}: {
+  step: NextStep;
+  finishAt: number;
+  now: () => number;
+  onDone: () => void;
+  onCancel: () => void;
+  onEdit: (seconds: number) => void;
+}) {
+  const label = stepLabel(step);
+  return (
+    <li className="flex flex-wrap items-center gap-3 rounded-xl border border-sky-400/40 bg-sky-400/5 px-3 py-2">
+      <span className="text-sm text-[#e9e6f5]">{label}</span>
+      <RunningJob
+        label={label}
+        noun="Construction"
+        finishAt={finishAt}
+        now={now}
+        onDone={onDone}
+        onCancel={onCancel}
+        onEdit={onEdit}
+      />
     </li>
   );
 }

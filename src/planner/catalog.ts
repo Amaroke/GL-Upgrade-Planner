@@ -24,10 +24,31 @@ export type BuildingType = {
   levels: LevelInfo[];
 };
 
+export type UnitCategory = "Infantry" | "Vehicle" | "Aircraft";
+export const UNIT_CATEGORIES: UnitCategory[] = ["Infantry", "Vehicle", "Aircraft"];
+
+export type UnitLevelInfo = {
+  level: number;
+  laboratory: number;
+  time: string | null;
+};
+
+export type UnitType = {
+  id: string;
+  name: string;
+  category: UnitCategory;
+  building: string;
+  starBase: number;
+  startsUnlocked: boolean;
+  unlockTime: string | null;
+  levels: UnitLevelInfo[];
+};
+
 export type Catalog = {
   version: number;
   starBase: LevelInfo[];
   buildings: BuildingType[];
+  units: UnitType[];
 };
 
 export const CATALOG: Catalog = raw as Catalog;
