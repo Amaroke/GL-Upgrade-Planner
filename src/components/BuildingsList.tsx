@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { NumberField } from "./NumberField";
+import { TypeIcon } from "./TypeIcon";
 import {
   limitsAt,
   MIN_LEVEL,
@@ -18,6 +19,7 @@ import {
   type TypeStatus,
 } from "../planner/statuses";
 import type { ColonyBuildings } from "../store/colonyStore";
+import { typeImage } from "../typeImages";
 
 const STATUS_LABELS: Record<TypeStatus, string> = {
   missing: "To construct",
@@ -95,83 +97,92 @@ export function BuildingsList({ groups, starBaseLevel, buildings, onChange }: Bu
                   key={type.id}
                   role="group"
                   aria-label={type.name}
-                  className={`flex flex-col gap-2 rounded-lg bg-surface/5 px-3 py-2 ${
+                  className={`flex gap-3 rounded-lg bg-surface/5 px-3 py-2 ${
                     unlockLevel === null ? "" : "opacity-50"
                   }`}
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-medium text-ink">{type.name}</span>
-                      {statuses.length > 0 && (
-                        <ul aria-label="Statuses" className="flex gap-1">
-                          {statuses.map((status) => (
-                            <li key={status}>
-                              <StatusBadge status={status} />
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      {unlockLevel !== null && (
-                        <span className="text-xs text-white/60">
-                          Unlocks at Star Base {unlockLevel}
-                        </span>
-                      )}
-                    </div>
-                    <span className="flex items-center gap-2">
-                      <span className="text-xs uppercase tracking-wide text-white/55">Owned</span>
-                      <NumberField
-                        label={`${type.name} owned`}
-                        value={levels.length}
-                        min={0}
-                        max={limits.maxCount}
-                        onCommit={(count) =>
-                          onChange(
-                            type.id,
-                            type.sharedLevel
-                              ? withSharedCount(levels, count)
-                              : withCount(levels, count),
-                          )
-                        }
-                      />
+                  {typeImage(type.id) && (
+                    <span className="flex w-16 shrink-0 items-center justify-center border-r border-white/10 pr-3">
+                      <TypeIcon typeId={type.id} size={56} />
                     </span>
-                  </div>
-                  {levels.length > 0 && (
-                    <div className="flex flex-col gap-2 border-t border-white/10 pt-2">
-                      <div className="flex flex-wrap gap-1.5">
-                        {type.sharedLevel ? (
-                          <LevelChip status={instanceStatus(limits, 0, sharedLevel(levels))}>
-                            <NumberField
-                              compact
-                              label={`${type.name} level`}
-                              value={sharedLevel(levels)}
-                              min={MIN_LEVEL}
-                              max={limits.maxLevel}
-                              onCommit={(next) => onChange(type.id, withSharedLevel(levels, next))}
-                            />
-                          </LevelChip>
-                        ) : (
-                          levels.map((level, index) => (
-                            <LevelChip
-                              key={index}
-                              status={instanceStatus(limits, index, level)}
-                              statusLabel={`${type.name} ${index + 1} status`}
-                            >
+                  )}
+                  <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium text-ink">{type.name}</span>
+                        {statuses.length > 0 && (
+                          <ul aria-label="Statuses" className="flex gap-1">
+                            {statuses.map((status) => (
+                              <li key={status}>
+                                <StatusBadge status={status} />
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {unlockLevel !== null && (
+                          <span className="text-xs text-white/60">
+                            Unlocks at Star Base {unlockLevel}
+                          </span>
+                        )}
+                      </div>
+                      <span className="flex items-center gap-2">
+                        <span className="text-xs uppercase tracking-wide text-white/55">Owned</span>
+                        <NumberField
+                          label={`${type.name} owned`}
+                          value={levels.length}
+                          min={0}
+                          max={limits.maxCount}
+                          onCommit={(count) =>
+                            onChange(
+                              type.id,
+                              type.sharedLevel
+                                ? withSharedCount(levels, count)
+                                : withCount(levels, count),
+                            )
+                          }
+                        />
+                      </span>
+                    </div>
+                    {levels.length > 0 && (
+                      <div className="flex flex-col gap-2 border-t border-white/10 pt-2">
+                        <div className="flex flex-wrap gap-1.5">
+                          {type.sharedLevel ? (
+                            <LevelChip status={instanceStatus(limits, 0, sharedLevel(levels))}>
                               <NumberField
                                 compact
-                                label={`${type.name} ${index + 1} level`}
-                                value={level}
+                                label={`${type.name} level`}
+                                value={sharedLevel(levels)}
                                 min={MIN_LEVEL}
                                 max={limits.maxLevel}
                                 onCommit={(next) =>
-                                  onChange(type.id, withLevel(levels, index, next))
+                                  onChange(type.id, withSharedLevel(levels, next))
                                 }
                               />
                             </LevelChip>
-                          ))
-                        )}
+                          ) : (
+                            levels.map((level, index) => (
+                              <LevelChip
+                                key={index}
+                                status={instanceStatus(limits, index, level)}
+                                statusLabel={`${type.name} ${index + 1} status`}
+                              >
+                                <NumberField
+                                  compact
+                                  label={`${type.name} ${index + 1} level`}
+                                  value={level}
+                                  min={MIN_LEVEL}
+                                  max={limits.maxLevel}
+                                  onCommit={(next) =>
+                                    onChange(type.id, withLevel(levels, index, next))
+                                  }
+                                />
+                              </LevelChip>
+                            ))
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               );
             })}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { DurationEditor, RunningJob, START_BUTTON } from "./NextSteps";
 import { NumberField } from "./NumberField";
+import { TypeIcon } from "./TypeIcon";
 import { useTick } from "../hooks/useTick";
 import { UNIT_CATEGORIES, type Catalog } from "../planner/catalog";
 import {
@@ -130,7 +131,10 @@ function Slot({
       const label = jobLabel(catalog, kind, job);
       return (
         <>
-          <span className="text-sm text-ink">{label}</span>
+          <span className="flex items-center gap-2 text-sm text-ink">
+            <TypeIcon typeId={job.unitId} size={20} />
+            {label}
+          </span>
           <RunningJob
             key={job.finishAt}
             label={label}
@@ -148,6 +152,7 @@ function Slot({
     if (!selected) return <span className="text-sm text-white/40">Nothing to {kind}</span>;
     return (
       <>
+        <TypeIcon typeId={selected.unit.id} size={20} />
         <select
           aria-label={`Next ${title}`}
           value={selected.unit.id}
@@ -247,7 +252,12 @@ function UnitRow({
       aria-label={unit.name}
       className={`border-t border-white/5 ${lockReason ? "opacity-45" : ""}`}
     >
-      <td className="w-32 py-2 pr-3 text-sm text-ink">{unit.name}</td>
+      <td className="w-44 py-2 pr-3 text-sm text-ink">
+        <span className="flex items-center gap-2">
+          <TypeIcon typeId={unit.id} size={20} />
+          {unit.name}
+        </span>
+      </td>
       <td className="w-28 py-2 pr-3">
         <LevelPips view={view} />
       </td>
