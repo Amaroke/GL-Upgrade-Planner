@@ -1,9 +1,10 @@
 import type { Catalog, UnitType } from "./catalog";
-import { COLONIES } from "./colonies";
+import { COLONIES, isColonyUnlocked, MAIN_COLONY_ID, observatoryLevel } from "./colonies";
 import { parseDuration } from "./nextSteps";
 import type { Notice } from "../hooks/useReadyNotifications";
 import type {
   ColonyBuildings,
+  ColonyEntry,
   ColonyStore,
   Construction,
   LabJob,
@@ -41,6 +42,21 @@ export type UnitStep = {
   time: string | null;
   seconds: number | null;
 };
+
+const NO_BUILDINGS: ColonyBuildings = {};
+const NO_CONSTRUCTIONS: Construction[] = [];
+const NO_UNITS: UnitLevels = {};
+
+export function labColonyOf(entry: ColonyEntry | null): LabColony {
+  return {
+    starBaseLevel: entry?.starBaseLevel ?? 1,
+    buildings: entry?.buildings ?? NO_BUILDINGS,
+    constructions: entry?.constructions ?? NO_CONSTRUCTIONS,
+    units: entry?.units ?? NO_UNITS,
+    research: entry?.research ?? null,
+    unlock: entry?.unlock ?? null,
+  };
+}
 
 export function laboratoryLevel(buildings: ColonyBuildings): number {
   return buildings[LABORATORY_ID]?.[0] ?? 0;
@@ -116,6 +132,25 @@ export function unitSteps(catalog: Catalog, colony: LabColony): UnitStep[] {
     .flatMap((view) => stepOf(view) ?? [])
     .filter((step) => colony[step.kind]?.unitId !== step.unit.id)
     .sort(fastestFirst);
+}
+
+export function idleLaboratory(catalog: Catalog, entry: ColonyEntry | null, now: number): boolean {
+  const colony = labColonyOf(entry);
+  if (laboratoryLevel(colony.buildings) === 0) return false;
+  const jobs = [colony.research, colony.unlock];
+  if (jobs.some((job) => job !== null && job.finishAt > now)) return false;
+  const researchBlocked = researchBlocker(colony, now) !== null;
+  return unitSteps(catalog, colony).some(
+    (step) => colony[step.kind] === null && !(step.kind === "research" && researchBlocked),
+  );
+}
+
+export function totalIdleLaboratories(catalog: Catalog, store: ColonyStore, now: number): number {
+  const observatory = observatoryLevel(store.get(MAIN_COLONY_ID)?.buildings ?? {});
+  return COLONIES.filter((colony) => isColonyUnlocked(colony, observatory)).filter((colony) => {
+    const entry = store.get(colony.id);
+    return !entry?.research && !entry?.unlock && idleLaboratory(catalog, entry, now);
+  }).length;
 }
 
 export function jobLabel(catalog: Catalog, kind: LabKind, job: LabJob): string {

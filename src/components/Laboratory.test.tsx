@@ -648,6 +648,44 @@ describe("Laboratory", () => {
       expect(options("Unlock").length).toBeGreaterThan(0);
       expect(screen.queryByRole("img", { name: "Main planet has a free Worker" })).toBeNull();
     });
+
+    const BUSY_WORKER = {
+      constructions: [
+        {
+          kind: "upgrade" as const,
+          typeId: "training-camp",
+          instance: 1,
+          count: 1,
+          targetLevel: 2,
+          finishAt: NOW + 100 * HOUR,
+        },
+      ],
+    };
+
+    function idleDot() {
+      return screen.queryByRole("img", { name: "Main planet has an idle Laboratory" });
+    }
+
+    it("shows the idle Laboratory dot while nothing runs and a step is left", async () => {
+      renderApp(seed(BUSY_WORKER));
+      expect(idleDot()).toBeInTheDocument();
+
+      await click("Start Unlock Looter", slot("Unlock"));
+      expect(idleDot()).toBeNull();
+
+      passTime(HOUR);
+      expect(idleDot()).toBeInTheDocument();
+    });
+
+    it("counts an idle Laboratory in the tab title", async () => {
+      document.title = "GL Upgrade Planner";
+      renderApp(seed(BUSY_WORKER));
+      expect(document.title).toBe("(1) GL Upgrade Planner");
+
+      await click("Start Research Marine to level 2", slot("Research"));
+      passTime(0);
+      expect(document.title).toBe("GL Upgrade Planner");
+    });
   });
 
   describe("Finished Research and Unlock", () => {
@@ -679,6 +717,7 @@ describe("Laboratory", () => {
       renderApp();
       await click("Start Research Marine to level 2", slot("Research"));
       await click("Start Unlock Looter", slot("Unlock"));
+      passTime(0);
       const before = titleCount();
 
       passTime(30 * MINUTE);
@@ -688,7 +727,7 @@ describe("Laboratory", () => {
       expect(titleCount()).toBe(before + 2);
     });
 
-    it("drops the title count once the job is Done or cancelled", async () => {
+    it("drops the title count once the job is Done or cancelled, then counts the idle Laboratory", async () => {
       renderApp();
       await click("Start Research Marine to level 2", slot("Research"));
       await click("Start Unlock Looter", slot("Unlock"));
@@ -702,7 +741,7 @@ describe("Laboratory", () => {
       await click("Cancel Research Marine to level 2", slot("Research"));
       await click("Confirm cancel Research Marine to level 2", slot("Research"));
       passTime(0);
-      expect(titleCount()).toBe(finished - 2);
+      expect(titleCount()).toBe(finished - 1);
     });
 
     it("sends one notification when a Research or an Unlock becomes Finished", async () => {
