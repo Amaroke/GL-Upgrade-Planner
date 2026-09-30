@@ -681,6 +681,22 @@ describe("Laboratory", () => {
       expect(idleDot()).toBeInTheDocument();
     });
 
+    it("shows the idle Laboratory dot once a job is Finished, counted once in the tab title", async () => {
+      document.title = "GL Upgrade Planner";
+      renderApp(seed(BUSY_WORKER));
+      await click("Start Research Marine to level 2", slot("Research"));
+      await click("Start Unlock Looter", slot("Unlock"));
+      passTime(30 * MINUTE);
+      await click("Done Unlock Looter", slot("Unlock"));
+      passTime(0);
+      expect(idleDot()).toBeNull();
+      expect(document.title).toBe("GL Upgrade Planner");
+
+      passTime(2 * HOUR);
+      expect(idleDot()).toBeInTheDocument();
+      expect(document.title).toBe("(1) GL Upgrade Planner");
+    });
+
     it("counts the idle Research and Unlock slots separately in the tab title", async () => {
       document.title = "GL Upgrade Planner";
       renderApp(seed(BUSY_WORKER));
