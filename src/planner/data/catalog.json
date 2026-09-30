@@ -1830,7 +1830,7 @@
       "building": "training-camp",
       "starBase": 1,
       "startsUnlocked": false,
-      "unlockTime": "2h",
+      "unlockTime": "5m",
       "levels": [
         {
           "level": 2,
@@ -1871,7 +1871,7 @@
       "building": "training-camp",
       "starBase": 1,
       "startsUnlocked": false,
-      "unlockTime": "8h",
+      "unlockTime": "5h",
       "levels": [
         {
           "level": 2,
