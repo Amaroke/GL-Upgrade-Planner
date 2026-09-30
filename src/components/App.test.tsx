@@ -3075,6 +3075,59 @@ describe("App", () => {
     });
   });
 
+  describe("legal notices", () => {
+    it("shows a footer outside the main landmark with a link to the Legal popup", () => {
+      render(<App store={createMemoryDropStore()} auth={SIGNED_OUT_AUTH} now={() => NOW} />);
+
+      const footer = screen.getByRole("contentinfo");
+      expect(within(screen.getByRole("main")).queryByRole("contentinfo")).toBeNull();
+      expect(footer).toHaveTextContent("Not affiliated with Galaxy Life");
+      expect(within(footer).getByRole("button", { name: "Legal" })).toBeInTheDocument();
+    });
+
+    it("opens the Legal popup from the footer with the wiki license, the non-affiliation and the privacy notice", async () => {
+      render(<App store={createMemoryDropStore()} auth={SIGNED_OUT_AUTH} now={() => NOW} />);
+
+      await userEvent.click(screen.getByRole("button", { name: "Legal" }));
+
+      const dialog = within(screen.getByRole("dialog", { name: "Legal" }));
+      expect(dialog.getByRole("heading", { name: "Credits" })).toBeInTheDocument();
+      expect(
+        dialog.getByRole("link", {
+          name: "Creative Commons Attribution-ShareAlike 4.0 License",
+        }),
+      ).toHaveAttribute("href", "https://creativecommons.org/licenses/by-sa/4.0");
+      expect(dialog.getByRole("link", { name: "CC-BY-SA" })).toHaveAttribute(
+        "href",
+        "https://www.fandom.com/licensing",
+      );
+      expect(dialog.getByRole("link", { name: "galaxylife.wiki.gg" })).toHaveAttribute(
+        "href",
+        "https://galaxylife.wiki.gg/",
+      );
+      expect(dialog.getByRole("link", { name: "galaxylife.fandom.com" })).toHaveAttribute(
+        "href",
+        "https://galaxylife.fandom.com/",
+      );
+      expect(dialog.getByRole("heading", { name: "Not affiliated" })).toBeInTheDocument();
+      expect(dialog.getByRole("heading", { name: "Privacy" })).toBeInTheDocument();
+      expect(dialog.getByText(/local storage/)).toBeInTheDocument();
+      expect(dialog.getByText(/Google sign-in.*Cloud Firestore/)).toBeInTheDocument();
+      expect(dialog.getByText(/To stop using your account, sign out/)).toBeInTheDocument();
+    });
+
+    it("closes the Legal popup with Escape and returns focus to the footer link", async () => {
+      render(<App store={createMemoryDropStore()} auth={SIGNED_OUT_AUTH} now={() => NOW} />);
+      const trigger = screen.getByRole("button", { name: "Legal" });
+
+      await userEvent.click(trigger);
+      await userEvent.keyboard("{Escape}");
+
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(trigger).toHaveFocus();
+    });
+  });
+
   describe("the chip stays in sync with the advanced card", () => {
     beforeEach(() => localStorage.clear());
     afterEach(() => localStorage.clear());

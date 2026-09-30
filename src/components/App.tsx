@@ -1,5 +1,6 @@
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { AccountControl } from "./AccountControl";
+import { LegalFooter } from "./LegalFooter";
 import { Modal } from "./Modal";
 import { NotificationsControl } from "./NotificationsControl";
 import { Planner } from "./Planner";
@@ -142,6 +143,8 @@ function App({
           isLoading={isLoading}
         />
       </main>
+
+      <LegalFooter />
 
       {advancedDrop && (
         <Modal
