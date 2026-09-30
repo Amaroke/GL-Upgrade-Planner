@@ -4,6 +4,7 @@ type ModalProps = {
   label: string;
   onClose: () => void;
   children: ReactNode;
+  widthClassName?: string;
 };
 
 function focusableElements(container: HTMLElement) {
@@ -14,7 +15,7 @@ function focusableElements(container: HTMLElement) {
   );
 }
 
-export function Modal({ label, onClose, children }: ModalProps) {
+export function Modal({ label, onClose, children, widthClassName = "max-w-xs" }: ModalProps) {
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,7 +62,7 @@ export function Modal({ label, onClose, children }: ModalProps) {
         aria-label={label}
         ref={contentRef}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-xs"
+        className={`relative w-full ${widthClassName}`}
       >
         <button
           type="button"
