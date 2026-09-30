@@ -136,6 +136,10 @@ export function unitSteps(catalog: Catalog, colony: LabColony): UnitStep[] {
 
 const LAB_KINDS: LabKind[] = ["research", "unlock"];
 
+function isRunning(job: LabJob | null, now: number): boolean {
+  return job !== null && job.finishAt > now;
+}
+
 export function idleLabSlots(catalog: Catalog, entry: ColonyEntry | null, now: number): LabKind[] {
   const colony = labColonyOf(entry);
   if (laboratoryLevel(colony.buildings) === 0) return [];
@@ -143,7 +147,7 @@ export function idleLabSlots(catalog: Catalog, entry: ColonyEntry | null, now: n
   const researchBlocked = researchBlocker(colony, now) !== null;
   return LAB_KINDS.filter(
     (kind) =>
-      colony[kind] === null &&
+      !isRunning(colony[kind], now) &&
       !(kind === "research" && researchBlocked) &&
       steps.some((step) => step.kind === kind),
   );
@@ -152,7 +156,11 @@ export function idleLabSlots(catalog: Catalog, entry: ColonyEntry | null, now: n
 export function totalIdleLabSlots(catalog: Catalog, store: ColonyStore, now: number): number {
   const observatory = observatoryLevel(store.get(MAIN_COLONY_ID)?.buildings ?? {});
   return COLONIES.filter((colony) => isColonyUnlocked(colony, observatory)).reduce(
-    (total, colony) => total + idleLabSlots(catalog, store.get(colony.id), now).length,
+    (total, colony) => {
+      const entry = store.get(colony.id);
+      const idle = idleLabSlots(catalog, entry, now).filter((kind) => !entry?.[kind]);
+      return total + idle.length;
+    },
     0,
   );
 }

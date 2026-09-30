@@ -74,9 +74,15 @@ describe("idleLabSlots", () => {
     expect(idleLabSlots(CATALOG, entry, NOW)).toEqual(["research"]);
   });
 
-  it("counts no slot holding a Finished job, already counted as Finished", () => {
-    const entry = colony({ research: job("marine", 2, NOW) });
-    expect(idleLabSlots(CATALOG, entry, NOW)).toEqual(["unlock"]);
+  it("counts the Research slot holding a Finished job as if nothing ran", () => {
+    const entry = colony({ units: { looter: 1 }, research: job("marine", 2, NOW) });
+    expect(idleLabSlots(CATALOG, entry, NOW)).toEqual(["research"]);
+  });
+
+  it("counts the Unlock slot holding a Finished job as if nothing ran", () => {
+    const catalog = { ...CATALOG, units: [...CATALOG.units, unit("robot", false, [1])] };
+    const entry = colony({ units: { marine: 2 }, unlock: job("looter", 1, NOW) });
+    expect(idleLabSlots(catalog, entry, NOW)).toEqual(["unlock"]);
   });
 
   it("counts none when nothing is left to start", () => {
@@ -106,5 +112,11 @@ describe("totalIdleLabSlots", () => {
     store.set("colony-1", colony({ units: { looter: 1 } }));
     store.set("colony-2", colony());
     expect(totalIdleLabSlots(CATALOG, store, NOW)).toBe(3);
+  });
+
+  it("does not count again a slot holding a Finished job, already counted as Finished", () => {
+    const store = createMemoryColonyStore();
+    store.set("main", colony({ research: job("marine", 2, NOW) }));
+    expect(totalIdleLabSlots(CATALOG, store, NOW)).toBe(1);
   });
 });
