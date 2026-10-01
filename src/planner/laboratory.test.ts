@@ -85,6 +85,20 @@ describe("idleLabSlots", () => {
     expect(idleLabSlots(catalog, entry, NOW)).toEqual(["unlock"]);
   });
 
+  it("counts the Unlock slot holding a Finished job even when no other Unlock is left", () => {
+    const entry = colony({ units: { marine: 2 }, unlock: job("looter", 1, NOW) });
+    expect(idleLabSlots(CATALOG, entry, NOW)).toEqual(["unlock"]);
+  });
+
+  it("counts the Research slot holding a Finished job while the Laboratory is upgraded", () => {
+    const entry = colony({
+      units: { looter: 1 },
+      research: job("marine", 2, NOW),
+      constructions: [LAB_UPGRADE],
+    });
+    expect(idleLabSlots(CATALOG, entry, NOW)).toEqual(["research"]);
+  });
+
   it("counts none when nothing is left to start", () => {
     const entry = colony({ units: { marine: 2, looter: 2 } });
     expect(idleLabSlots(CATALOG, entry, NOW)).toEqual([]);
