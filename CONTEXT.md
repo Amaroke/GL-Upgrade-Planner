@@ -108,5 +108,5 @@ A Next step taking a Unit type from not unlocked to level 1 in the Laboratory. O
 _Avoid_: Unit Research, discovery
 
 **Idle Laboratory slot**:
-The Research or the Unlock slot of a Laboratory when it holds no running job and a Unit step of its kind is left to start. A slot holding a Finished job counts as if nothing ran. It shows the Colony's yellow dot like a free Worker, and each idle slot counts once in the tab title, unless it holds a Finished job, which already counts.
+The Research or the Unlock slot of a Laboratory when it holds a Finished job, or when it holds no running job and a Unit step of its kind is left to start. It shows the Colony's yellow dot like a free Worker, and each idle slot counts once in the tab title, unless it holds a Finished job, which already counts.
 _Avoid_: Free Laboratory, inactive lab

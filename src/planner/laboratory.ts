@@ -140,6 +140,10 @@ function isRunning(job: LabJob | null, now: number): boolean {
   return job !== null && job.finishAt > now;
 }
 
+function isFinished(job: LabJob | null, now: number): boolean {
+  return job !== null && job.finishAt <= now;
+}
+
 export function idleLabSlots(catalog: Catalog, entry: ColonyEntry | null, now: number): LabKind[] {
   const colony = labColonyOf(entry);
   if (laboratoryLevel(colony.buildings) === 0) return [];
@@ -147,9 +151,10 @@ export function idleLabSlots(catalog: Catalog, entry: ColonyEntry | null, now: n
   const researchBlocked = researchBlocker(colony, now) !== null;
   return LAB_KINDS.filter(
     (kind) =>
-      !isRunning(colony[kind], now) &&
-      !(kind === "research" && researchBlocked) &&
-      steps.some((step) => step.kind === kind),
+      isFinished(colony[kind], now) ||
+      (!isRunning(colony[kind], now) &&
+        !(kind === "research" && researchBlocked) &&
+        steps.some((step) => step.kind === kind)),
   );
 }
 
