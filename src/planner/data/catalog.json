@@ -151,22 +151,22 @@
         },
         {
           "starBase": 2,
-          "maxLevel": 5,
+          "maxLevel": 4,
           "maxCount": 6
         },
         {
           "starBase": 3,
-          "maxLevel": 7,
+          "maxLevel": 5,
           "maxCount": 8
         },
         {
           "starBase": 4,
-          "maxLevel": 9,
+          "maxLevel": 7,
           "maxCount": 10
         },
         {
           "starBase": 5,
-          "maxLevel": 9,
+          "maxLevel": 8,
           "maxCount": 12
         },
         {
@@ -250,22 +250,22 @@
         },
         {
           "starBase": 2,
-          "maxLevel": 5,
+          "maxLevel": 4,
           "maxCount": 6
         },
         {
           "starBase": 3,
-          "maxLevel": 7,
+          "maxLevel": 5,
           "maxCount": 8
         },
         {
           "starBase": 4,
-          "maxLevel": 9,
+          "maxLevel": 7,
           "maxCount": 10
         },
         {
           "starBase": 5,
-          "maxLevel": 9,
+          "maxLevel": 8,
           "maxCount": 12
         },
         {
