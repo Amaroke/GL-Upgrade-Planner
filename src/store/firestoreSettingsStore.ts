@@ -11,9 +11,10 @@ export type FirestoreSettingsStore = SettingsStore & {
 
 export const SETTINGS_CODEC: DocumentCodec<PlannerSettings> = {
   fromDocument: toPlannerSettings,
-  toDocument: ({ onlyToUpgrade, hideWallUpgrades, updatedAt }) => ({
+  toDocument: ({ onlyToUpgrade, hideWallUpgrades, prioritizeBanksAndSilos, updatedAt }) => ({
     onlyToUpgrade,
     hideWallUpgrades,
+    prioritizeBanksAndSilos,
     updatedAt,
   }),
 };

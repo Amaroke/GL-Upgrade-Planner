@@ -7,6 +7,7 @@ import {
 export type PlannerSettings = {
   onlyToUpgrade: boolean;
   hideWallUpgrades: boolean;
+  prioritizeBanksAndSilos: boolean;
   updatedAt: number;
 };
 
@@ -22,11 +23,17 @@ export function toPlannerSettings(value: unknown): PlannerSettings | null {
   const {
     onlyToUpgrade = false,
     hideWallUpgrades = false,
+    prioritizeBanksAndSilos = false,
     updatedAt,
   } = value as Record<string, unknown>;
-  if (typeof onlyToUpgrade !== "boolean" || typeof hideWallUpgrades !== "boolean") return null;
+  if (
+    typeof onlyToUpgrade !== "boolean" ||
+    typeof hideWallUpgrades !== "boolean" ||
+    typeof prioritizeBanksAndSilos !== "boolean"
+  )
+    return null;
   if (typeof updatedAt !== "number" || !Number.isFinite(updatedAt)) return null;
-  return { onlyToUpgrade, hideWallUpgrades, updatedAt };
+  return { onlyToUpgrade, hideWallUpgrades, prioritizeBanksAndSilos, updatedAt };
 }
 
 export function createLocalStorageSettingsStore(): SettingsStore {
@@ -47,6 +54,7 @@ export function migrateLegacyOnlyToUpgrade(store: SettingsStore): void {
       store.set(PLANNER_SETTINGS_KEY, {
         onlyToUpgrade: legacy === "true",
         hideWallUpgrades: false,
+        prioritizeBanksAndSilos: false,
         updatedAt: 0,
       });
     }

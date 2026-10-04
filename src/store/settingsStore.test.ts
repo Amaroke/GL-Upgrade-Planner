@@ -10,6 +10,7 @@ describe("toPlannerSettings", () => {
     expect(toPlannerSettings({ updatedAt: 5 })).toEqual({
       onlyToUpgrade: false,
       hideWallUpgrades: false,
+      prioritizeBanksAndSilos: false,
       updatedAt: 5,
     });
   });
@@ -18,6 +19,7 @@ describe("toPlannerSettings", () => {
     expect(toPlannerSettings(null)).toBeNull();
     expect(toPlannerSettings({ onlyToUpgrade: "yes", updatedAt: 5 })).toBeNull();
     expect(toPlannerSettings({ hideWallUpgrades: 1, updatedAt: 5 })).toBeNull();
+    expect(toPlannerSettings({ prioritizeBanksAndSilos: 1, updatedAt: 5 })).toBeNull();
     expect(toPlannerSettings({ onlyToUpgrade: true })).toBeNull();
     expect(toPlannerSettings({ onlyToUpgrade: true, updatedAt: Number.NaN })).toBeNull();
   });
@@ -27,7 +29,12 @@ describe("createLocalStorageSettingsStore", () => {
   afterEach(() => localStorage.clear());
 
   it("keeps the settings across store instances", () => {
-    const settings = { onlyToUpgrade: true, hideWallUpgrades: true, updatedAt: 10 };
+    const settings = {
+      onlyToUpgrade: true,
+      hideWallUpgrades: true,
+      prioritizeBanksAndSilos: false,
+      updatedAt: 10,
+    };
     createLocalStorageSettingsStore().set("planner", settings);
 
     expect(createLocalStorageSettingsStore().get("planner")).toEqual(settings);
@@ -52,6 +59,7 @@ describe("migrateLegacyOnlyToUpgrade", () => {
     expect(store.get("planner")).toEqual({
       onlyToUpgrade: true,
       hideWallUpgrades: false,
+      prioritizeBanksAndSilos: false,
       updatedAt: 0,
     });
     expect(localStorage.getItem("gl-planner-only-to-upgrade")).toBeNull();
@@ -60,7 +68,12 @@ describe("migrateLegacyOnlyToUpgrade", () => {
   it("keeps settings already saved", () => {
     localStorage.setItem("gl-planner-only-to-upgrade", "true");
     const store = createLocalStorageSettingsStore();
-    const saved = { onlyToUpgrade: false, hideWallUpgrades: true, updatedAt: 10 };
+    const saved = {
+      onlyToUpgrade: false,
+      hideWallUpgrades: true,
+      prioritizeBanksAndSilos: false,
+      updatedAt: 10,
+    };
     store.set("planner", saved);
 
     migrateLegacyOnlyToUpgrade(store);

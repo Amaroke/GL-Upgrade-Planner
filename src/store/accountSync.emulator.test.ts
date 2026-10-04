@@ -202,7 +202,12 @@ describe("mergeLocalIntoAccount settings", () => {
 
   function localSettings(updatedAt: number) {
     const settings = createMemorySettingsStore();
-    settings.set("planner", { onlyToUpgrade: true, hideWallUpgrades: true, updatedAt });
+    settings.set("planner", {
+      onlyToUpgrade: true,
+      hideWallUpgrades: true,
+      prioritizeBanksAndSilos: false,
+      updatedAt,
+    });
     return settings;
   }
 
@@ -215,13 +220,19 @@ describe("mergeLocalIntoAccount settings", () => {
     expect(snapshot.data()).toEqual({
       onlyToUpgrade: true,
       hideWallUpgrades: true,
+      prioritizeBanksAndSilos: false,
       updatedAt: 500,
     });
   });
 
   it("keeps the account settings when they are more recent than the local ones", async () => {
     const db = firestoreOf(testEnv.authenticatedContext("player-1"));
-    const account = { onlyToUpgrade: false, hideWallUpgrades: false, updatedAt: 900 };
+    const account = {
+      onlyToUpgrade: false,
+      hideWallUpgrades: false,
+      prioritizeBanksAndSilos: false,
+      updatedAt: 900,
+    };
     await setDoc(doc(db, PLANNER), account);
 
     await merge(db, { settings: localSettings(500) });

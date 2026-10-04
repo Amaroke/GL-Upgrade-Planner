@@ -60,7 +60,11 @@ const COLONY_VIEWS: { id: ColonyView; name: string }[] = [
 
 type PlannerOptions = Omit<PlannerSettings, "updatedAt">;
 
-const DEFAULT_OPTIONS: PlannerOptions = { onlyToUpgrade: false, hideWallUpgrades: false };
+const DEFAULT_OPTIONS: PlannerOptions = {
+  onlyToUpgrade: false,
+  hideWallUpgrades: false,
+  prioritizeBanksAndSilos: false,
+};
 
 function usePlannerOptions(
   store: SettingsStore,
@@ -72,7 +76,11 @@ function usePlannerOptions(
   );
   const stored = useSyncExternalStore(subscribe, () => store.get(PLANNER_SETTINGS_KEY));
   const options: PlannerOptions = stored
-    ? { onlyToUpgrade: stored.onlyToUpgrade, hideWallUpgrades: stored.hideWallUpgrades }
+    ? {
+        onlyToUpgrade: stored.onlyToUpgrade,
+        hideWallUpgrades: stored.hideWallUpgrades,
+        prioritizeBanksAndSilos: stored.prioritizeBanksAndSilos,
+      }
     : DEFAULT_OPTIONS;
 
   function update(changes: Partial<PlannerOptions>) {
@@ -113,10 +121,8 @@ function ColonyPanel({
   const laboratory = labColonyOf(entry);
   const [view, setView] = useState<ColonyView>("buildings");
   const freeWorkers = workers - runningConstructions(constructions, now()).length;
-  const [{ onlyToUpgrade, hideWallUpgrades }, updateOptions] = usePlannerOptions(
-    settingsStore,
-    now,
-  );
+  const [{ onlyToUpgrade, hideWallUpgrades, prioritizeBanksAndSilos }, updateOptions] =
+    usePlannerOptions(settingsStore, now);
   const allGroups = groupedBuildingsForColony(catalog, colony.id);
   const groups = onlyToUpgrade ? filterToUpgrade(allGroups, starBaseLevel, buildings) : allGroups;
   const selectId = `star-base-level-${colony.id}`;
@@ -274,6 +280,10 @@ function ColonyPanel({
         now={now}
         hideWallUpgrades={hideWallUpgrades}
         onHideWallUpgradesChange={(value) => updateOptions({ hideWallUpgrades: value })}
+        prioritizeBanksAndSilos={prioritizeBanksAndSilos}
+        onPrioritizeBanksAndSilosChange={(value) =>
+          updateOptions({ prioritizeBanksAndSilos: value })
+        }
         onStart={startStep}
         onDone={applyStep}
         onDoneConstruction={applyConstruction}

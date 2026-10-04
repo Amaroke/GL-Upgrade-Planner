@@ -8,6 +8,7 @@ import {
   nextSteps,
   readDuration,
   stepLabel,
+  withBanksAndSilosFirst,
   withoutWallUpgrades,
   type NextStep,
   type StepOrder,
@@ -300,6 +301,8 @@ type NextStepsProps = {
   now: () => number;
   hideWallUpgrades: boolean;
   onHideWallUpgradesChange: (value: boolean) => void;
+  prioritizeBanksAndSilos: boolean;
+  onPrioritizeBanksAndSilosChange: (value: boolean) => void;
   onStart: (step: NextStep, seconds: number) => void;
   onDone: (step: NextStep) => void;
   onDoneConstruction: (index: number) => void;
@@ -321,6 +324,8 @@ export function NextSteps({
   now,
   hideWallUpgrades,
   onHideWallUpgradesChange,
+  prioritizeBanksAndSilos,
+  onPrioritizeBanksAndSilosChange,
   onStart,
   onDone,
   onDoneConstruction,
@@ -333,14 +338,17 @@ export function NextSteps({
   const selectId = useId();
   const categoryId = useId();
   const allSteps = nextSteps(catalog, colonyId, starBaseLevel, buildings, order, category);
-  const visibleSteps = hideWallUpgrades ? withoutWallUpgrades(allSteps) : allSteps;
+  const filteredSteps = hideWallUpgrades ? withoutWallUpgrades(allSteps) : allSteps;
+  const orderedSteps = prioritizeBanksAndSilos
+    ? withBanksAndSilosFirst(filteredSteps)
+    : filteredSteps;
   const rows: Row[] = [
     ...constructions.map((construction, index) => ({
       construction,
       index,
       step: constructionStep(catalog, construction),
     })),
-    ...withoutStarted(visibleSteps, constructions).map((step) => ({ construction: null, step })),
+    ...withoutStarted(orderedSteps, constructions).map((step) => ({ construction: null, step })),
   ];
   const shown = expanded ? rows : rows.slice(0, COLLAPSED_COUNT);
 
@@ -356,6 +364,14 @@ export function NextSteps({
               onChange={(event) => onHideWallUpgradesChange(event.target.checked)}
             />
             Hide wall upgrades
+          </label>
+          <label className="flex items-center gap-2 text-sm text-white/60">
+            <input
+              type="checkbox"
+              checked={prioritizeBanksAndSilos}
+              onChange={(event) => onPrioritizeBanksAndSilosChange(event.target.checked)}
+            />
+            Prioritize Banks and Silos
           </label>
           <label htmlFor={categoryId} className="text-sm text-white/60">
             Category

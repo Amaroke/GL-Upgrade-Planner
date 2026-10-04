@@ -633,8 +633,18 @@ describe("createAccountSync colonies", () => {
 });
 
 describe("createAccountSync settings", () => {
-  const SETTINGS = { onlyToUpgrade: true, hideWallUpgrades: false, updatedAt: 10 };
-  const ACCOUNT_SETTINGS = { onlyToUpgrade: false, hideWallUpgrades: true, updatedAt: 20 };
+  const SETTINGS = {
+    onlyToUpgrade: true,
+    hideWallUpgrades: false,
+    prioritizeBanksAndSilos: false,
+    updatedAt: 10,
+  };
+  const ACCOUNT_SETTINGS = {
+    onlyToUpgrade: false,
+    hideWallUpgrades: true,
+    prioritizeBanksAndSilos: false,
+    updatedAt: 20,
+  };
 
   function setup() {
     const authStore = createAuthStore({ status: "signed-out" });

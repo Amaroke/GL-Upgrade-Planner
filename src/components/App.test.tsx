@@ -784,6 +784,7 @@ describe("App", () => {
           expect(settingsStore.get("planner")).toEqual({
             onlyToUpgrade: true,
             hideWallUpgrades: false,
+            prioritizeBanksAndSilos: false,
             updatedAt: NOW,
           });
           const second = renderPlanner(colonyStore, settingsStore);
@@ -1911,6 +1912,7 @@ describe("App", () => {
           expect(settingsStore.get("planner")).toEqual({
             onlyToUpgrade: false,
             hideWallUpgrades: true,
+            prioritizeBanksAndSilos: false,
             updatedAt: NOW,
           });
           renderWalls([2, 2, 2], 3, settingsStore);
@@ -1918,6 +1920,94 @@ describe("App", () => {
           expect(hideWallUpgrades()).toBeChecked();
           expect(stepList().queryByText("Upgrade 3 Walls to level 3")).not.toBeInTheDocument();
         });
+      });
+    });
+
+    describe("prioritize Banks and Silos", () => {
+      function storageCatalog(): Catalog {
+        const [observatory] = FIXTURE_CATALOG.buildings;
+        const withTimes = (type: BuildingType, time: string): BuildingType => ({
+          ...type,
+          levels: type.levels.map(({ level }) => ({ level, time })),
+        });
+        const limits: [number, number][] = [
+          [1, 3],
+          [1, 3],
+          [1, 3],
+        ];
+        return {
+          ...FIXTURE_CATALOG,
+          buildings: [
+            observatory,
+            withTimes(fixtureType("mine", "Mine", "Resource", false, limits), "1m"),
+            withTimes(fixtureType("bank", "Bank", "Resource", false, limits), "2h"),
+            withTimes(fixtureType("silo", "Silo", "Resource", false, limits), "1h"),
+          ],
+        };
+      }
+
+      function renderStorage(settingsStore: SettingsStore = createMemorySettingsStore()) {
+        const colonyStore = createMemoryColonyStore();
+        seed(colonyStore, 3, { observatory: [6], mine: [1], bank: [1], silo: [1] });
+        render(
+          <App
+            store={createMemoryDropStore()}
+            auth={SIGNED_OUT_AUTH}
+            now={() => NOW}
+            colonyStore={colonyStore}
+            settingsStore={settingsStore}
+            catalog={storageCatalog()}
+          />,
+        );
+      }
+
+      const prioritize = () => screen.getByRole("checkbox", { name: "Prioritize Banks and Silos" });
+
+      function stepLabels() {
+        return within(screen.getByRole("list", { name: "Next steps" }))
+          .getAllByRole("listitem")
+          .map((item) => item.children[0].textContent);
+      }
+
+      it("keeps the usual order until the option is switched on", () => {
+        renderStorage();
+
+        expect(prioritize()).not.toBeChecked();
+        expect(stepLabels()).toEqual([
+          "Upgrade Mine to level 2",
+          "Upgrade Silo to level 2",
+          "Upgrade Bank to level 2",
+        ]);
+      });
+
+      it("lists the Bank and Silo upgrades before the other steps", async () => {
+        renderStorage();
+
+        await userEvent.click(prioritize());
+
+        expect(stepLabels()).toEqual([
+          "Upgrade Silo to level 2",
+          "Upgrade Bank to level 2",
+          "Upgrade Mine to level 2",
+        ]);
+      });
+
+      it("remembers the option in the settings after a reload", async () => {
+        const settingsStore = createMemorySettingsStore();
+        renderStorage(settingsStore);
+        await userEvent.click(prioritize());
+        cleanup();
+
+        expect(settingsStore.get("planner")).toEqual({
+          onlyToUpgrade: false,
+          hideWallUpgrades: false,
+          prioritizeBanksAndSilos: true,
+          updatedAt: NOW,
+        });
+        renderStorage(settingsStore);
+
+        expect(prioritize()).toBeChecked();
+        expect(stepLabels()[0]).toBe("Upgrade Silo to level 2");
       });
     });
   });

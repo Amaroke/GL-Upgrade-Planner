@@ -5,6 +5,7 @@ import {
   parseDuration,
   readDuration,
   STAR_BASE_ID,
+  withBanksAndSilosFirst,
   withoutWallUpgrades,
   type NextStep,
 } from "./nextSteps";
@@ -334,5 +335,37 @@ describe("withoutWallUpgrades", () => {
     const steps = [step("upgrade", true), step("build", true), step("upgrade", false)];
 
     expect(withoutWallUpgrades(steps)).toEqual([steps[1], steps[2]]);
+  });
+});
+
+describe("withBanksAndSilosFirst", () => {
+  it("moves the Bank and Silo steps ahead of the others and keeps each group in order", () => {
+    const step = (typeId: string, kind: NextStep["kind"]): NextStep => ({
+      kind,
+      typeId,
+      typeName: typeId,
+      category: "Resource",
+      instance: 1,
+      count: 1,
+      shared: false,
+      targetLevel: 2,
+      time: "1m",
+      seconds: 60,
+    });
+    const steps = [
+      step("mine", "build"),
+      step("silo", "build"),
+      step("mine", "upgrade"),
+      step("bank", "upgrade"),
+      step("silo", "upgrade"),
+    ];
+
+    expect(withBanksAndSilosFirst(steps)).toEqual([
+      steps[1],
+      steps[3],
+      steps[4],
+      steps[0],
+      steps[2],
+    ]);
   });
 });
