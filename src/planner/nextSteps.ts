@@ -199,3 +199,10 @@ export function nextSteps(
 export function withoutWallUpgrades(steps: NextStep[]): NextStep[] {
   return steps.filter((step) => !(step.shared && step.kind === "upgrade"));
 }
+
+const BANK_AND_SILO_IDS = new Set(["bank", "silo"]);
+
+export function withBanksAndSilosFirst(steps: NextStep[]): NextStep[] {
+  const isBankOrSilo = (step: NextStep) => BANK_AND_SILO_IDS.has(step.typeId);
+  return [...steps.filter(isBankOrSilo), ...steps.filter((step) => !isBankOrSilo(step))];
+}

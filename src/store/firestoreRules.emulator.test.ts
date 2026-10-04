@@ -339,7 +339,12 @@ describe("Firestore security rules for Colonies", () => {
   });
 });
 
-const VALID_SETTINGS = { onlyToUpgrade: true, hideWallUpgrades: false, updatedAt: 500 };
+const VALID_SETTINGS = {
+  onlyToUpgrade: true,
+  hideWallUpgrades: false,
+  prioritizeBanksAndSilos: false,
+  updatedAt: 500,
+};
 const SETTINGS_PATH = "users/player-1/settings/planner";
 
 describe("Firestore security rules for settings", () => {
@@ -367,6 +372,13 @@ describe("Firestore security rules for settings", () => {
     }
   });
 
+  it("accepts settings saved before the Bank and Silo priority existed", async () => {
+    const ref = doc(firestoreOf(testEnv.authenticatedContext("player-1")), SETTINGS_PATH);
+    const { prioritizeBanksAndSilos: _, ...older } = VALID_SETTINGS;
+
+    await assertSucceeds(setDoc(ref, older));
+  });
+
   it("rejects unknown, missing or mistyped fields", async () => {
     const ref = doc(firestoreOf(testEnv.authenticatedContext("player-1")), SETTINGS_PATH);
 
@@ -374,6 +386,7 @@ describe("Firestore security rules for settings", () => {
     await assertFails(setDoc(ref, { onlyToUpgrade: true, updatedAt: 500 }));
     await assertFails(setDoc(ref, { ...VALID_SETTINGS, onlyToUpgrade: "yes" }));
     await assertFails(setDoc(ref, { ...VALID_SETTINGS, hideWallUpgrades: 1 }));
+    await assertFails(setDoc(ref, { ...VALID_SETTINGS, prioritizeBanksAndSilos: 1 }));
     await assertFails(setDoc(ref, { ...VALID_SETTINGS, updatedAt: -1 }));
   });
 });

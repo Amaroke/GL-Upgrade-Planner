@@ -102,10 +102,11 @@ service cloud.firestore {
 
     function isValidSettings() {
       let data = request.resource.data;
-      return data.keys().hasOnly(['onlyToUpgrade', 'hideWallUpgrades', 'updatedAt'])
+      return data.keys().hasOnly(['onlyToUpgrade', 'hideWallUpgrades', 'prioritizeBanksAndSilos', 'updatedAt'])
         && data.keys().hasAll(['onlyToUpgrade', 'hideWallUpgrades', 'updatedAt'])
         && data.onlyToUpgrade is bool
         && data.hideWallUpgrades is bool
+        && (!('prioritizeBanksAndSilos' in data) || data.prioritizeBanksAndSilos is bool)
         && isValidTimestamp(data.updatedAt);
     }
 

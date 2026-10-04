@@ -433,7 +433,12 @@ describe("deferred sync", () => {
 
     expect(setDoc).toHaveBeenCalledWith(
       { path: "users/player-1/settings/planner" },
-      { onlyToUpgrade: true, hideWallUpgrades: true, updatedAt: NOW },
+      {
+        onlyToUpgrade: true,
+        hideWallUpgrades: true,
+        prioritizeBanksAndSilos: false,
+        updatedAt: NOW,
+      },
     );
   });
 
@@ -442,7 +447,12 @@ describe("deferred sync", () => {
 
     act(() =>
       snapshotHandlers.get("users/player-1/settings/planner")?.({
-        data: () => ({ onlyToUpgrade: true, hideWallUpgrades: true, updatedAt: NOW + 5000 }),
+        data: () => ({
+          onlyToUpgrade: true,
+          hideWallUpgrades: true,
+          prioritizeBanksAndSilos: false,
+          updatedAt: NOW + 5000,
+        }),
       }),
     );
 
