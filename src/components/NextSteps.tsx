@@ -26,13 +26,13 @@ const ORDER_LABELS: Record<StepOrder, string> = {
 const ALL_CATEGORIES = "all";
 
 export const ROW_BUTTON =
-  "rounded-md border border-white/15 px-2 py-0.5 text-xs text-white/75 transition-colors hover:bg-white/10";
+  "shrink-0 whitespace-nowrap rounded-md border border-white/15 px-2 py-0.5 text-xs text-white/75 transition-colors hover:bg-white/10";
 
 export const START_BUTTON =
   "rounded-md border border-green-400/50 bg-green-500/15 px-2 py-0.5 text-xs text-green-200 transition-colors hover:bg-green-500/25";
 
 export const DONE_BUTTON =
-  "rounded-md border border-accent/40 px-2 py-0.5 text-xs text-sky-100 transition-colors hover:bg-accent/15";
+  "shrink-0 whitespace-nowrap rounded-md border border-accent/40 px-2 py-0.5 text-xs text-sky-100 transition-colors hover:bg-accent/15";
 
 export function DurationEditor({
   action,
@@ -188,7 +188,7 @@ export function RunningJob({
   return (
     <>
       <span
-        className={`ml-auto text-xs tabular-nums ${remaining === 0 ? "font-semibold text-green-300" : "text-accent"}`}
+        className={`ml-auto shrink-0 whitespace-nowrap text-xs tabular-nums ${remaining === 0 ? "font-semibold text-green-300" : "text-accent"}`}
       >
         {remaining === 0 ? "Finished" : formatCountdown(remaining)}
       </span>
@@ -205,7 +205,9 @@ export function RunningJob({
       )}
       {mode === "confirmingCancel" && (
         <>
-          <span className="text-xs whitespace-nowrap text-white/70">Cancel this {noun}?</span>
+          <span className="shrink-0 text-xs whitespace-nowrap text-white/70">
+            Cancel this {noun}?
+          </span>
           <button
             type="button"
             aria-label={`Confirm cancel ${label}`}
