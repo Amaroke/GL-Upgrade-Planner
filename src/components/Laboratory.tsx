@@ -131,9 +131,9 @@ function Slot({
       const label = jobLabel(catalog, kind, job);
       return (
         <>
-          <span className="flex items-center gap-2 text-sm text-ink">
+          <span className="flex min-w-0 items-center gap-2 text-sm text-ink" title={label}>
             <TypeIcon typeId={job.unitId} size={20} />
-            {label}
+            <span className="truncate">{label}</span>
           </span>
           <RunningJob
             key={job.finishAt}
@@ -182,9 +182,9 @@ function Slot({
     <div
       role="group"
       aria-label={title}
-      className="flex min-w-0 flex-1 flex-wrap items-center gap-2 rounded-lg bg-surface/5 px-3 py-1.5"
+      className={`flex min-h-10.5 min-w-0 flex-1 items-center gap-2 rounded-lg bg-surface/5 px-3 py-1.5 ${job ? "flex-nowrap" : "flex-wrap"}`}
     >
-      <span className="w-16 text-xs uppercase tracking-wide text-white/55">{title}</span>
+      <span className="w-16 shrink-0 text-xs uppercase tracking-wide text-white/55">{title}</span>
       {content()}
     </div>
   );
