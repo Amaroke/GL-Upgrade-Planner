@@ -182,7 +182,7 @@ function Slot({
     <div
       role="group"
       aria-label={title}
-      className={`flex min-w-0 flex-1 items-center gap-2 rounded-lg bg-surface/5 px-3 py-1.5 ${job ? "flex-nowrap" : "flex-wrap"}`}
+      className={`flex min-h-10.5 min-w-0 flex-1 items-center gap-2 rounded-lg bg-surface/5 px-3 py-1.5 ${job ? "flex-nowrap" : "flex-wrap"}`}
     >
       <span className="w-16 shrink-0 text-xs uppercase tracking-wide text-white/55">{title}</span>
       {content()}
